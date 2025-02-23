@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Search, MapPin, Phone, Plus } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -25,7 +24,6 @@ const Index = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
 
-  // Debounce search query
   const handleSearchChange = (value: string) => {
     setSearchQuery(value);
     clearTimeout(Number(localStorage.getItem('searchTimeout')));
@@ -69,17 +67,9 @@ const Index = () => {
           transition={{ duration: 0.5 }}
           className="text-center max-w-3xl mx-auto"
         >
-          <div className="flex justify-between items-center mb-8">
-            <h1 className="text-4xl md:text-5xl font-bold text-gray-900">
-              Find Medicine Near You
-            </h1>
-            <Link to="/add-shop">
-              <Button className="gap-2">
-                <Plus size={20} />
-                Add Shop
-              </Button>
-            </Link>
-          </div>
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-8">
+            Find Medicine Near You
+          </h1>
 
           <p className="text-lg text-gray-600 mb-8">
             Search for medicines, locate nearby stores, and order online with ease.

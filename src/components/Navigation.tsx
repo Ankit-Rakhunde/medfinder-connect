@@ -1,6 +1,7 @@
 
 import { Link } from "react-router-dom";
-import { ShoppingCart, User, Search, MapPin, Phone } from "lucide-react";
+import { ShoppingCart, User, Search, MapPin, Phone, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const Navigation = () => {
   return (
@@ -23,6 +24,12 @@ const Navigation = () => {
             <Link to="/doctors" className="flex items-center space-x-1 text-gray-600 hover:text-medical-600 transition-colors">
               <Phone size={18} />
               <span>Doctors</span>
+            </Link>
+            <Link to="/add-shop" className="flex items-center space-x-1">
+              <Button variant="outline" size="sm" className="gap-2">
+                <Plus size={18} />
+                Add Shop
+              </Button>
             </Link>
           </div>
 

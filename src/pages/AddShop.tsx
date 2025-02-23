@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
 import Navigation from "@/components/Navigation";
-import { Plus, Minus } from "lucide-react";
+import { Plus, Minus, MapPin } from "lucide-react";
 
 interface Medicine {
   name: string;
@@ -19,10 +18,15 @@ const AddShop = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [locationDetails, setLocationDetails] = useState({
+    area: "",
+    pincode: "",
+  });
   const [shopData, setShopData] = useState({
     name: "",
     address: "",
     phone: "",
+    maps_link: "",
     latitude: null as number | null,
     longitude: null as number | null,
   });
@@ -34,22 +38,48 @@ const AddShop = () => {
   const getCurrentLocation = () => {
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setShopData(prev => ({
-            ...prev,
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude
-          }));
-          toast({
-            title: "Location detected",
-            description: "Current location has been captured successfully."
-          });
+        async (position) => {
+          const { latitude, longitude } = position.coords;
+          try {
+            // Reverse geocoding using OpenStreetMap Nominatim API (free and no API key required)
+            const response = await fetch(
+              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
+            );
+            const data = await response.json();
+            
+            const area = data.address.suburb || data.address.neighbourhood || data.address.city_district;
+            const pincode = data.address.postcode;
+            
+            setLocationDetails({
+              area: area || "Area not found",
+              pincode: pincode || "Pincode not found",
+            });
+            
+            setShopData(prev => ({
+              ...prev,
+              latitude,
+              longitude,
+              maps_link: `https://www.google.com/maps?q=${latitude},${longitude}`,
+              address: data.display_name,
+            }));
+
+            toast({
+              title: "Location detected",
+              description: `${area}, ${pincode}`,
+            });
+          } catch (error) {
+            toast({
+              variant: "destructive",
+              title: "Error getting location details",
+              description: "Could not fetch location details",
+            });
+          }
         },
         (error) => {
           toast({
             variant: "destructive",
             title: "Error getting location",
-            description: error.message
+            description: error.message,
           });
         }
       );
@@ -57,7 +87,7 @@ const AddShop = () => {
       toast({
         variant: "destructive",
         title: "Geolocation not supported",
-        description: "Your browser doesn't support location services."
+        description: "Your browser doesn't support location services.",
       });
     }
   };
@@ -154,6 +184,30 @@ const AddShop = () => {
               </div>
 
               <div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={getCurrentLocation}
+                  className="w-full mb-4"
+                >
+                  Detect Current Location
+                </Button>
+                
+                {locationDetails.area && locationDetails.pincode && (
+                  <div className="p-4 bg-gray-50 rounded-lg space-y-2 text-sm">
+                    <p className="flex items-center gap-2">
+                      <MapPin size={16} className="text-medical-600" />
+                      <span className="font-medium">Area:</span> {locationDetails.area}
+                    </p>
+                    <p className="flex items-center gap-2">
+                      <MapPin size={16} className="text-medical-600" />
+                      <span className="font-medium">Pincode:</span> {locationDetails.pincode}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <div>
                 <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-2">
                   Address
                 </label>
@@ -163,6 +217,19 @@ const AddShop = () => {
                   value={shopData.address}
                   onChange={(e) => setShopData(prev => ({ ...prev, address: e.target.value }))}
                   placeholder="Enter shop address"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="maps_link" className="block text-sm font-medium text-gray-700 mb-2">
+                  Google Maps Link
+                </label>
+                <Input
+                  id="maps_link"
+                  type="url"
+                  value={shopData.maps_link}
+                  onChange={(e) => setShopData(prev => ({ ...prev, maps_link: e.target.value }))}
+                  placeholder="Enter Google Maps link"
                 />
               </div>
 
@@ -177,23 +244,6 @@ const AddShop = () => {
                   onChange={(e) => setShopData(prev => ({ ...prev, phone: e.target.value }))}
                   placeholder="Enter phone number"
                 />
-              </div>
-
-              <div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={getCurrentLocation}
-                  className="w-full mb-4"
-                >
-                  Detect Current Location
-                </Button>
-                
-                {(shopData.latitude && shopData.longitude) && (
-                  <p className="text-sm text-green-600">
-                    Location detected: {shopData.latitude.toFixed(6)}, {shopData.longitude.toFixed(6)}
-                  </p>
-                )}
               </div>
             </div>
 
