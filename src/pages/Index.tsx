@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { Search } from "lucide-react";
+import { Search, MapPin, Phone } from "lucide-react";
 import Navigation from "@/components/Navigation";
 import { motion } from "framer-motion";
 
