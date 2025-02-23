@@ -1,7 +1,9 @@
 
 import { useState } from "react";
-import { Search, MapPin, Phone } from "lucide-react";
+import { Search, MapPin, Phone, Plus } from "lucide-react";
+import { Link } from "react-router-dom";
 import Navigation from "@/components/Navigation";
+import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 
 const Index = () => {
@@ -18,9 +20,18 @@ const Index = () => {
           transition={{ duration: 0.5 }}
           className="text-center max-w-3xl mx-auto"
         >
-          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-            Find Medicine Near You
-          </h1>
+          <div className="flex justify-between items-center mb-8">
+            <h1 className="text-4xl md:text-5xl font-bold text-gray-900">
+              Find Medicine Near You
+            </h1>
+            <Link to="/add-shop">
+              <Button className="gap-2">
+                <Plus size={20} />
+                Add Shop
+              </Button>
+            </Link>
+          </div>
+
           <p className="text-lg text-gray-600 mb-8">
             Search for medicines, locate nearby stores, and order online with ease.
           </p>
