@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -42,7 +41,6 @@ const AddShop = () => {
         async (position) => {
           const { latitude, longitude } = position.coords;
           try {
-            // Reverse geocoding using OpenStreetMap Nominatim API (free and no API key required)
             const response = await fetch(
               `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
             );
@@ -98,16 +96,21 @@ const AddShop = () => {
     setLoading(true);
 
     try {
-      // First, insert the shop
       const { data: shopResult, error: shopError } = await supabase
         .from('shops')
-        .insert([shopData])
+        .insert([{
+          name: shopData.name,
+          address: shopData.address,
+          phone: shopData.phone,
+          latitude: shopData.latitude,
+          longitude: shopData.longitude,
+          maps_link: shopData.maps_link
+        }])
         .select()
         .single();
 
       if (shopError) throw shopError;
 
-      // Then, insert the medicines with the shop_id
       const medicinesWithShopId = medicines
         .filter(medicine => medicine.name.trim() !== '')
         .map(medicine => ({

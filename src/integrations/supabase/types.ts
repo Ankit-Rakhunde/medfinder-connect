@@ -54,6 +54,7 @@ export type Database = {
           id: string
           latitude: number | null
           longitude: number | null
+          maps_link: string | null
           name: string
           phone: string | null
         }
@@ -63,6 +64,7 @@ export type Database = {
           id?: string
           latitude?: number | null
           longitude?: number | null
+          maps_link?: string | null
           name: string
           phone?: string | null
         }
@@ -72,6 +74,7 @@ export type Database = {
           id?: string
           latitude?: number | null
           longitude?: number | null
+          maps_link?: string | null
           name?: string
           phone?: string | null
         }
