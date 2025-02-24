@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,6 +19,7 @@ const AddShop = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [locationLoading, setLocationLoading] = useState(false);
   const [locationDetails, setLocationDetails] = useState({
     area: "",
     pincode: "",
@@ -36,19 +38,50 @@ const AddShop = () => {
   ]);
 
   const getCurrentLocation = () => {
+    setLocationLoading(true);
     if ("geolocation" in navigator) {
+      const options = {
+        enableHighAccuracy: true, // Request high accuracy
+        timeout: 10000,          // Timeout after 10 seconds
+        maximumAge: 0            // Don't use cached position
+      };
+
       navigator.geolocation.getCurrentPosition(
         async (position) => {
           const { latitude, longitude } = position.coords;
           try {
+            // Using OpenStreetMap's Nominatim API with more specific parameters
             const response = await fetch(
-              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
+              `https://nominatim.openstreetmap.org/reverse?` +
+              `format=json&lat=${latitude}&lon=${longitude}&` +
+              `addressdetails=1&zoom=18`
             );
+            
+            if (!response.ok) {
+              throw new Error('Failed to fetch location details');
+            }
+
             const data = await response.json();
             
-            const area = data.address.suburb || data.address.neighbourhood || data.address.city_district;
+            // More robust location data extraction
+            const area = data.address.suburb || 
+                        data.address.neighbourhood || 
+                        data.address.residential || 
+                        data.address.city_district ||
+                        data.address.city;
+                        
             const pincode = data.address.postcode;
+
+            // Construct a detailed address
+            const addressParts = [];
+            if (data.address.road) addressParts.push(data.address.road);
+            if (area) addressParts.push(area);
+            if (data.address.city) addressParts.push(data.address.city);
+            if (pincode) addressParts.push(pincode);
+            if (data.address.state) addressParts.push(data.address.state);
             
+            const fullAddress = addressParts.join(', ');
+
             setLocationDetails({
               area: area || "Area not found",
               pincode: pincode || "Pincode not found",
@@ -59,7 +92,7 @@ const AddShop = () => {
               latitude,
               longitude,
               maps_link: `https://www.google.com/maps?q=${latitude},${longitude}`,
-              address: data.display_name,
+              address: fullAddress,
             }));
 
             toast({
@@ -70,19 +103,38 @@ const AddShop = () => {
             toast({
               variant: "destructive",
               title: "Error getting location details",
-              description: "Could not fetch location details",
+              description: "Please check if location services are enabled and try again",
             });
+          } finally {
+            setLocationLoading(false);
           }
         },
         (error) => {
+          setLocationLoading(false);
+          let errorMessage = "Could not get your location";
+          
+          switch(error.code) {
+            case error.PERMISSION_DENIED:
+              errorMessage = "Please enable location services in your browser";
+              break;
+            case error.POSITION_UNAVAILABLE:
+              errorMessage = "Location information is unavailable";
+              break;
+            case error.TIMEOUT:
+              errorMessage = "Location request timed out";
+              break;
+          }
+
           toast({
             variant: "destructive",
             title: "Error getting location",
-            description: error.message,
+            description: errorMessage,
           });
-        }
+        },
+        options
       );
     } else {
+      setLocationLoading(false);
       toast({
         variant: "destructive",
         title: "Geolocation not supported",
@@ -192,9 +244,10 @@ const AddShop = () => {
                   type="button"
                   variant="outline"
                   onClick={getCurrentLocation}
+                  disabled={locationLoading}
                   className="w-full mb-4"
                 >
-                  Detect Current Location
+                  {locationLoading ? "Detecting Location..." : "Detect Current Location"}
                 </Button>
                 
                 {locationDetails.area && locationDetails.pincode && (
@@ -207,6 +260,11 @@ const AddShop = () => {
                       <MapPin size={16} className="text-medical-600" />
                       <span className="font-medium">Pincode:</span> {locationDetails.pincode}
                     </p>
+                    {shopData.latitude && shopData.longitude && (
+                      <p className="text-xs text-gray-500">
+                        Coordinates: {shopData.latitude.toFixed(6)}, {shopData.longitude.toFixed(6)}
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
