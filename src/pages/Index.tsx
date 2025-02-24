@@ -1,4 +1,5 @@
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import { Search, MapPin, Phone, Plus } from "lucide-react";
 import { Link } from "react-router-dom";
 import Navigation from "@/components/Navigation";
@@ -6,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
+import { useToast } from "@/components/ui/use-toast";
 
 interface SearchResult {
   medicine: {
@@ -17,12 +19,35 @@ interface SearchResult {
     name: string;
     address: string;
     phone: string | null;
+    latitude: number | null;
+    longitude: number | null;
   };
 }
 
+interface LocationDetails {
+  area: string;
+  pincode: string;
+  latitude: number | null;
+  longitude: number | null;
+}
+
+const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+  const R = 6371; // Earth's radius in km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  const distance = R * c; // Distance in km
+  return distance;
+};
+
 const Index = () => {
+  const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [userLocation, setUserLocation] = useState<LocationDetails | null>(null);
 
   const handleSearchChange = (value: string) => {
     setSearchQuery(value);
@@ -30,6 +55,60 @@ const Index = () => {
     const timeoutId = setTimeout(() => setDebouncedQuery(value), 500);
     localStorage.setItem('searchTimeout', timeoutId.toString());
   };
+
+  const getCurrentLocation = () => {
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const { latitude, longitude } = position.coords;
+          try {
+            const response = await fetch(
+              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
+            );
+            const data = await response.json();
+            
+            const area = data.address.suburb || data.address.neighbourhood || data.address.city_district;
+            const pincode = data.address.postcode;
+            
+            setUserLocation({
+              area: area || "Area not found",
+              pincode: pincode || "Pincode not found",
+              latitude,
+              longitude
+            });
+
+            toast({
+              title: "Location detected",
+              description: `${area}, ${pincode}`,
+            });
+          } catch (error) {
+            toast({
+              variant: "destructive",
+              title: "Error getting location details",
+              description: "Could not fetch location details",
+            });
+          }
+        },
+        (error) => {
+          toast({
+            variant: "destructive",
+            title: "Error getting location",
+            description: error.message,
+          });
+        }
+      );
+    } else {
+      toast({
+        variant: "destructive",
+        title: "Geolocation not supported",
+        description: "Your browser doesn't support location services.",
+      });
+    }
+  };
+
+  useEffect(() => {
+    getCurrentLocation();
+  }, []);
 
   const { data: searchResults, isLoading } = useQuery({
     queryKey: ['medicineSearch', debouncedQuery],
@@ -45,12 +124,40 @@ const Index = () => {
           shops (
             name,
             address,
-            phone
+            phone,
+            latitude,
+            longitude
           )
         `)
         .ilike('name', `%${debouncedQuery}%`);
 
       if (error) throw error;
+
+      // Sort results by distance if user location is available
+      if (data && userLocation?.latitude && userLocation?.longitude) {
+        return data.sort((a, b) => {
+          if (!a.shops?.latitude || !a.shops?.longitude || !b.shops?.latitude || !b.shops?.longitude) {
+            return 0;
+          }
+          
+          const distanceA = calculateDistance(
+            userLocation.latitude,
+            userLocation.longitude,
+            a.shops.latitude,
+            a.shops.longitude
+          );
+          
+          const distanceB = calculateDistance(
+            userLocation.latitude,
+            userLocation.longitude,
+            b.shops.latitude,
+            b.shops.longitude
+          );
+          
+          return distanceA - distanceB;
+        });
+      }
+
       return data || [];
     },
     enabled: debouncedQuery.length > 0
@@ -74,6 +181,23 @@ const Index = () => {
           <p className="text-lg text-gray-600 mb-8">
             Search for medicines, locate nearby stores, and order online with ease.
           </p>
+
+          {userLocation && (
+            <div className="mb-6 p-4 bg-gray-50 rounded-lg inline-block">
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <MapPin size={16} className="text-medical-600" />
+                <span>Your location: {userLocation.area}, {userLocation.pincode}</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={getCurrentLocation}
+                  className="text-medical-600 hover:text-medical-700"
+                >
+                  Update
+                </Button>
+              </div>
+            </div>
+          )}
 
           <div className="relative max-w-2xl mx-auto">
             <div className="relative">
@@ -105,33 +229,50 @@ const Index = () => {
                   </div>
                 ) : searchResults && searchResults.length > 0 ? (
                   <div className="divide-y divide-gray-100">
-                    {searchResults.map((result, index) => (
-                      <div key={index} className="p-4 hover:bg-gray-50">
-                        <div className="flex justify-between items-start mb-2">
-                          <h3 className="font-medium text-gray-900">{result.name}</h3>
-                          <span className="text-medical-600 font-medium">
-                            ₹{result.price.toFixed(2)}
-                          </span>
-                        </div>
-                        {result.shops && (
-                          <div className="text-sm text-gray-600">
-                            <p className="flex items-center gap-1">
-                              <MapPin size={16} />
-                              {result.shops.name} - {result.shops.address}
-                            </p>
-                            {result.shops.phone && (
-                              <p className="flex items-center gap-1 mt-1">
-                                <Phone size={16} />
-                                {result.shops.phone}
-                              </p>
-                            )}
-                            <p className="mt-1 text-xs text-gray-500">
-                              Stock available: {result.stock_quantity}
-                            </p>
+                    {searchResults.map((result, index) => {
+                      let distance = null;
+                      if (userLocation?.latitude && userLocation?.longitude && result.shops?.latitude && result.shops?.longitude) {
+                        distance = calculateDistance(
+                          userLocation.latitude,
+                          userLocation.longitude,
+                          result.shops.latitude,
+                          result.shops.longitude
+                        );
+                      }
+
+                      return (
+                        <div key={index} className="p-4 hover:bg-gray-50">
+                          <div className="flex justify-between items-start mb-2">
+                            <h3 className="font-medium text-gray-900">{result.name}</h3>
+                            <span className="text-medical-600 font-medium">
+                              ₹{result.price.toFixed(2)}
+                            </span>
                           </div>
-                        )}
-                      </div>
-                    ))}
+                          {result.shops && (
+                            <div className="text-sm text-gray-600">
+                              <p className="flex items-center gap-1">
+                                <MapPin size={16} />
+                                {result.shops.name} - {result.shops.address}
+                                {distance && (
+                                  <span className="ml-2 text-medical-600">
+                                    ({distance.toFixed(1)} km away)
+                                  </span>
+                                )}
+                              </p>
+                              {result.shops.phone && (
+                                <p className="flex items-center gap-1 mt-1">
+                                  <Phone size={16} />
+                                  {result.shops.phone}
+                                </p>
+                              )}
+                              <p className="mt-1 text-xs text-gray-500">
+                                Stock available: {result.stock_quantity}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="p-4 text-center text-gray-500">
