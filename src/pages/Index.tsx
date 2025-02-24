@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Search, MapPin, Phone, Plus } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -48,6 +47,7 @@ const Index = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [userLocation, setUserLocation] = useState<LocationDetails | null>(null);
+  const [isLoadingLocation, setIsLoadingLocation] = useState(false);
 
   const handleSearchChange = (value: string) => {
     setSearchQuery(value);
@@ -57,22 +57,45 @@ const Index = () => {
   };
 
   const getCurrentLocation = () => {
+    setIsLoadingLocation(true);
     if ("geolocation" in navigator) {
+      const options = {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      };
+
       navigator.geolocation.getCurrentPosition(
         async (position) => {
           const { latitude, longitude } = position.coords;
           try {
             const response = await fetch(
-              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
+              `https://nominatim.openstreetmap.org/reverse?` +
+              `format=json&lat=${latitude}&lon=${longitude}&` +
+              `addressdetails=1&zoom=18`
             );
+            
+            if (!response.ok) {
+              throw new Error('Failed to fetch location details');
+            }
+
             const data = await response.json();
             
-            const area = data.address.suburb || data.address.neighbourhood || data.address.city_district;
+            const area = data.address.suburb || 
+                        data.address.neighbourhood || 
+                        data.address.residential || 
+                        data.address.city_district ||
+                        data.address.city;
+                        
             const pincode = data.address.postcode;
+
+            if (!area || !pincode) {
+              throw new Error('Could not determine precise location');
+            }
             
             setUserLocation({
-              area: area || "Area not found",
-              pincode: pincode || "Pincode not found",
+              area,
+              pincode,
               latitude,
               longitude
             });
@@ -85,19 +108,38 @@ const Index = () => {
             toast({
               variant: "destructive",
               title: "Error getting location details",
-              description: "Could not fetch location details",
+              description: "Please check if location services are enabled and try again",
             });
+          } finally {
+            setIsLoadingLocation(false);
           }
         },
         (error) => {
+          setIsLoadingLocation(false);
+          let errorMessage = "Could not get your location";
+          
+          switch(error.code) {
+            case error.PERMISSION_DENIED:
+              errorMessage = "Please enable location services in your browser";
+              break;
+            case error.POSITION_UNAVAILABLE:
+              errorMessage = "Location information is unavailable";
+              break;
+            case error.TIMEOUT:
+              errorMessage = "Location request timed out";
+              break;
+          }
+
           toast({
             variant: "destructive",
             title: "Error getting location",
-            description: error.message,
+            description: errorMessage,
           });
-        }
+        },
+        options
       );
     } else {
+      setIsLoadingLocation(false);
       toast({
         variant: "destructive",
         title: "Geolocation not supported",
@@ -133,7 +175,6 @@ const Index = () => {
 
       if (error) throw error;
 
-      // Sort results by distance if user location is available
       if (data && userLocation?.latitude && userLocation?.longitude) {
         return data.sort((a, b) => {
           if (!a.shops?.latitude || !a.shops?.longitude || !b.shops?.latitude || !b.shops?.longitude) {
@@ -182,22 +223,40 @@ const Index = () => {
             Search for medicines, locate nearby stores, and order online with ease.
           </p>
 
-          {userLocation && (
-            <div className="mb-6 p-4 bg-gray-50 rounded-lg inline-block">
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <MapPin size={16} className="text-medical-600" />
-                <span>Your location: {userLocation.area}, {userLocation.pincode}</span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={getCurrentLocation}
-                  className="text-medical-600 hover:text-medical-700"
-                >
-                  Update
-                </Button>
-              </div>
+          <div className="mb-6 p-4 bg-gray-50 rounded-lg inline-block">
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <MapPin size={16} className="text-medical-600" />
+              {isLoadingLocation ? (
+                <span>Detecting your location...</span>
+              ) : userLocation ? (
+                <>
+                  <span>Your location: {userLocation.area}, {userLocation.pincode}</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={getCurrentLocation}
+                    className="text-medical-600 hover:text-medical-700"
+                    disabled={isLoadingLocation}
+                  >
+                    Update
+                  </Button>
+                </>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span>Location not detected</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={getCurrentLocation}
+                    className="text-medical-600 hover:text-medical-700"
+                    disabled={isLoadingLocation}
+                  >
+                    Detect Location
+                  </Button>
+                </div>
+              )}
             </div>
-          )}
+          </div>
 
           <div className="relative max-w-2xl mx-auto">
             <div className="relative">
