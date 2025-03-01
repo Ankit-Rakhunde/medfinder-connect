@@ -8,6 +8,8 @@ import { useToast } from "@/components/ui/use-toast";
 import Navigation from "@/components/Navigation";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -17,10 +19,13 @@ const Auth = () => {
   const [password, setPassword] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [emailNotConfirmed, setEmailNotConfirmed] = useState(false);
+  const [resendingEmail, setResendingEmail] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setEmailNotConfirmed(false);
 
     try {
       const { error } = await supabase.auth.signInWithPassword({
@@ -28,7 +33,13 @@ const Auth = () => {
         password,
       });
 
-      if (error) throw error;
+      if (error) {
+        if (error.message.includes("Email not confirmed")) {
+          setEmailNotConfirmed(true);
+          throw new Error("Please verify your email before logging in");
+        }
+        throw error;
+      }
 
       toast({
         title: "Login successful",
@@ -68,7 +79,7 @@ const Auth = () => {
         title: "Sign up successful",
         description: "Welcome to MedFinder! Please check your email to verify your account.",
       });
-      navigate("/");
+      setEmailNotConfirmed(true);
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -77,6 +88,31 @@ const Auth = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResendVerificationEmail = async () => {
+    setResendingEmail(true);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Verification email sent",
+        description: "Please check your inbox for the verification link",
+      });
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Failed to resend verification email",
+        description: error.message || "An error occurred. Please try again.",
+      });
+    } finally {
+      setResendingEmail(false);
     }
   };
 
@@ -93,6 +129,27 @@ const Auth = () => {
                 Sign in or create an account to add your shop
               </CardDescription>
             </CardHeader>
+
+            {emailNotConfirmed && (
+              <div className="px-6">
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    Your email is not verified. Please check your inbox for the verification link.
+                    <div className="mt-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleResendVerificationEmail}
+                        disabled={resendingEmail}
+                      >
+                        {resendingEmail ? "Sending..." : "Resend verification email"}
+                      </Button>
+                    </div>
+                  </AlertDescription>
+                </Alert>
+              </div>
+            )}
 
             <Tabs defaultValue="login" className="w-full">
               <TabsList className="grid w-full grid-cols-2">
