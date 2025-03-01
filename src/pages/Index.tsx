@@ -58,10 +58,15 @@ const Index = () => {
 
   const getCurrentLocation = () => {
     setIsLoadingLocation(true);
+    toast({
+      title: "Getting your location",
+      description: "Please wait while we detect your precise location...",
+    });
+    
     if ("geolocation" in navigator) {
       const options = {
         enableHighAccuracy: true,
-        timeout: 10000,
+        timeout: 15000,
         maximumAge: 0
       };
 
@@ -69,10 +74,12 @@ const Index = () => {
         async (position) => {
           const { latitude, longitude } = position.coords;
           try {
+            console.log("Raw coordinates:", latitude, longitude);
+            
             const response = await fetch(
               `https://nominatim.openstreetmap.org/reverse?` +
               `format=json&lat=${latitude}&lon=${longitude}&` +
-              `addressdetails=1&zoom=18`
+              `addressdetails=1&zoom=18&accept-language=en`
             );
             
             if (!response.ok) {
@@ -80,14 +87,16 @@ const Index = () => {
             }
 
             const data = await response.json();
+            console.log("Location data from API:", data);
             
             const area = data.address.suburb || 
                         data.address.neighbourhood || 
                         data.address.residential || 
                         data.address.city_district ||
-                        data.address.city;
+                        data.address.city ||
+                        "Unknown Area";
                         
-            const pincode = data.address.postcode;
+            const pincode = data.address.postcode || "Unknown Pincode";
 
             if (!area || !pincode) {
               throw new Error('Could not determine precise location');
@@ -105,10 +114,19 @@ const Index = () => {
               description: `${area}, ${pincode}`,
             });
           } catch (error) {
+            console.error("Error getting location details:", error);
+            
+            setUserLocation({
+              area: "Unknown Area",
+              pincode: "Unknown Pincode",
+              latitude: latitude,
+              longitude: longitude
+            });
+            
             toast({
               variant: "destructive",
-              title: "Error getting location details",
-              description: "Please check if location services are enabled and try again",
+              title: "Error getting detailed location",
+              description: "Using coordinates for search. Please try again later.",
             });
           } finally {
             setIsLoadingLocation(false);
@@ -116,6 +134,8 @@ const Index = () => {
         },
         (error) => {
           setIsLoadingLocation(false);
+          console.error("Geolocation error:", error);
+          
           let errorMessage = "Could not get your location";
           
           switch(error.code) {

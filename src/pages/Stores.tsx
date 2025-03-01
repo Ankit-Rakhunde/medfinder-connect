@@ -22,19 +22,62 @@ interface Shop {
 const Stores = () => {
   const { toast } = useToast();
   const [userCoordinates, setUserCoordinates] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
 
-  // Get user's current location
+  // Get user's current location with improved accuracy
   const getCurrentLocation = () => {
+    setIsGettingLocation(true);
     if ("geolocation" in navigator) {
+      const options = {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 0
+      };
+      
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
           setUserCoordinates({ latitude, longitude });
+          console.log("Location detected:", latitude, longitude);
+          setIsGettingLocation(false);
+          
+          toast({
+            title: "Location detected",
+            description: "Showing stores nearest to your location",
+          });
         },
         (error) => {
           console.error("Error getting location:", error);
-        }
+          setIsGettingLocation(false);
+          
+          let errorMessage = "Could not get your location";
+          switch(error.code) {
+            case error.PERMISSION_DENIED:
+              errorMessage = "Please enable location services in your browser";
+              break;
+            case error.POSITION_UNAVAILABLE:
+              errorMessage = "Location information is unavailable";
+              break;
+            case error.TIMEOUT:
+              errorMessage = "Location request timed out";
+              break;
+          }
+          
+          toast({
+            variant: "destructive",
+            title: "Error getting location",
+            description: errorMessage,
+          });
+        },
+        options
       );
+    } else {
+      setIsGettingLocation(false);
+      toast({
+        variant: "destructive",
+        title: "Geolocation not supported",
+        description: "Your browser doesn't support location services.",
+      });
     }
   };
 
@@ -108,9 +151,21 @@ const Stores = () => {
             Medical Stores
           </h1>
 
-          <p className="text-lg text-gray-600 mb-12 text-center">
+          <p className="text-lg text-gray-600 mb-8 text-center">
             Find medical stores near you and check their contact information.
           </p>
+          
+          <div className="flex justify-center mb-8">
+            <Button 
+              onClick={getCurrentLocation} 
+              disabled={isGettingLocation}
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              <MapPin size={16} />
+              {isGettingLocation ? "Detecting Location..." : userCoordinates ? "Update Location" : "Detect Location"}
+            </Button>
+          </div>
 
           {isLoading ? (
             <div className="grid grid-cols-1 gap-8">

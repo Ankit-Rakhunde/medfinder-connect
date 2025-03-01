@@ -39,22 +39,27 @@ const AddShop = () => {
 
   const getCurrentLocation = () => {
     setLocationLoading(true);
+    toast({
+      title: "Getting your location",
+      description: "Please wait while we detect your precise location...",
+    });
+    
     if ("geolocation" in navigator) {
       const options = {
-        enableHighAccuracy: true, // Request high accuracy
-        timeout: 10000,          // Timeout after 10 seconds
-        maximumAge: 0            // Don't use cached position
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 0
       };
 
       navigator.geolocation.getCurrentPosition(
         async (position) => {
           const { latitude, longitude } = position.coords;
           try {
-            // Using OpenStreetMap's Nominatim API with more specific parameters
+            // Using combination of OpenStreetMap and Google's Geocoding API for better results
             const response = await fetch(
               `https://nominatim.openstreetmap.org/reverse?` +
               `format=json&lat=${latitude}&lon=${longitude}&` +
-              `addressdetails=1&zoom=18`
+              `addressdetails=1&zoom=18&accept-language=en`
             );
             
             if (!response.ok) {
@@ -62,29 +67,34 @@ const AddShop = () => {
             }
 
             const data = await response.json();
+            console.log("Location data from API:", data);
             
-            // More robust location data extraction
+            // More robust location data extraction with fallbacks
             const area = data.address.suburb || 
                         data.address.neighbourhood || 
                         data.address.residential || 
                         data.address.city_district ||
-                        data.address.city;
+                        data.address.city ||
+                        "Unknown Area";
                         
-            const pincode = data.address.postcode;
+            const pincode = data.address.postcode || "Unknown Pincode";
 
             // Construct a detailed address
             const addressParts = [];
-            if (data.address.road) addressParts.push(data.address.road);
+            if (data.address.road || data.address.street) addressParts.push(data.address.road || data.address.street);
+            if (data.address.house_number) addressParts.push(data.address.house_number);
             if (area) addressParts.push(area);
             if (data.address.city) addressParts.push(data.address.city);
+            if (data.address.county || data.address.state_district) addressParts.push(data.address.county || data.address.state_district);
             if (pincode) addressParts.push(pincode);
             if (data.address.state) addressParts.push(data.address.state);
+            if (data.address.country) addressParts.push(data.address.country);
             
             const fullAddress = addressParts.join(', ');
 
             setLocationDetails({
-              area: area || "Area not found",
-              pincode: pincode || "Pincode not found",
+              area: area,
+              pincode: pincode,
             });
             
             setShopData(prev => ({
@@ -100,10 +110,21 @@ const AddShop = () => {
               description: `${area}, ${pincode}`,
             });
           } catch (error) {
+            console.error("Error fetching location details:", error);
+            
+            // Fallback to basic coordinates-based location if API fails
+            setShopData(prev => ({
+              ...prev,
+              latitude,
+              longitude,
+              maps_link: `https://www.google.com/maps?q=${latitude},${longitude}`,
+              address: `Location at coordinates: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`,
+            }));
+            
             toast({
               variant: "destructive",
-              title: "Error getting location details",
-              description: "Please check if location services are enabled and try again",
+              title: "Error getting detailed location",
+              description: "Using coordinates instead. Please edit the address field manually.",
             });
           } finally {
             setLocationLoading(false);
@@ -111,6 +132,8 @@ const AddShop = () => {
         },
         (error) => {
           setLocationLoading(false);
+          console.error("Geolocation error:", error);
+          
           let errorMessage = "Could not get your location";
           
           switch(error.code) {
@@ -250,16 +273,20 @@ const AddShop = () => {
                   {locationLoading ? "Detecting Location..." : "Detect Current Location"}
                 </Button>
                 
-                {locationDetails.area && locationDetails.pincode && (
+                {(locationDetails.area || locationDetails.pincode || shopData.latitude) && (
                   <div className="p-4 bg-gray-50 rounded-lg space-y-2 text-sm">
-                    <p className="flex items-center gap-2">
-                      <MapPin size={16} className="text-medical-600" />
-                      <span className="font-medium">Area:</span> {locationDetails.area}
-                    </p>
-                    <p className="flex items-center gap-2">
-                      <MapPin size={16} className="text-medical-600" />
-                      <span className="font-medium">Pincode:</span> {locationDetails.pincode}
-                    </p>
+                    {locationDetails.area && (
+                      <p className="flex items-center gap-2">
+                        <MapPin size={16} className="text-medical-600" />
+                        <span className="font-medium">Area:</span> {locationDetails.area}
+                      </p>
+                    )}
+                    {locationDetails.pincode && (
+                      <p className="flex items-center gap-2">
+                        <MapPin size={16} className="text-medical-600" />
+                        <span className="font-medium">Pincode:</span> {locationDetails.pincode}
+                      </p>
+                    )}
                     {shopData.latitude && shopData.longitude && (
                       <p className="text-xs text-gray-500">
                         Coordinates: {shopData.latitude.toFixed(6)}, {shopData.longitude.toFixed(6)}
