@@ -47,6 +47,30 @@ export type Database = {
           },
         ]
       }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string
+          first_name: string | null
+          id: string
+          last_name: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          first_name?: string | null
+          id: string
+          last_name?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+        }
+        Relationships: []
+      }
       shops: {
         Row: {
           address: string
@@ -57,6 +81,7 @@ export type Database = {
           maps_link: string | null
           name: string
           phone: string | null
+          user_id: string | null
         }
         Insert: {
           address: string
@@ -67,6 +92,7 @@ export type Database = {
           maps_link?: string | null
           name: string
           phone?: string | null
+          user_id?: string | null
         }
         Update: {
           address?: string
@@ -77,6 +103,7 @@ export type Database = {
           maps_link?: string | null
           name?: string
           phone?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }

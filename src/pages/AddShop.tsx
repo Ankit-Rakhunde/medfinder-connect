@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
 import Navigation from "@/components/Navigation";
 import { Plus, Minus, MapPin } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Medicine {
   name: string;
@@ -18,6 +19,7 @@ interface Medicine {
 const AddShop = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [locationLoading, setLocationLoading] = useState(false);
   const [locationDetails, setLocationDetails] = useState({
@@ -171,6 +173,7 @@ const AddShop = () => {
     setLoading(true);
 
     try {
+      // Add the user_id to the shop data
       const { data: shopResult, error: shopError } = await supabase
         .from('shops')
         .insert([{
@@ -179,7 +182,8 @@ const AddShop = () => {
           phone: shopData.phone,
           latitude: shopData.latitude,
           longitude: shopData.longitude,
-          maps_link: shopData.maps_link
+          maps_link: shopData.maps_link,
+          user_id: user?.id // Add the user ID from auth context
         }])
         .select()
         .single();
