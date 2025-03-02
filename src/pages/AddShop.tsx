@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
 import Navigation from "@/components/Navigation";
-import { Plus, Minus, MapPin, Save, Edit } from "lucide-react";
+import { Plus, Minus, MapPin, Save, Edit, Trash2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface Medicine {
@@ -58,6 +57,14 @@ const AddShop = () => {
   const [editMode, setEditMode] = useState(false);
   const [shopMedicines, setShopMedicines] = useState<Medicine[]>([]);
   const [updatingStock, setUpdatingStock] = useState(false);
+  const [addingNewMedicine, setAddingNewMedicine] = useState(false);
+  const [newMedicine, setNewMedicine] = useState<Medicine>({ 
+    name: "", 
+    description: "", 
+    price: "", 
+    stock_quantity: "" 
+  });
+  const [removingMedicine, setRemovingMedicine] = useState(false);
 
   // Fetch user's shops on component mount
   useEffect(() => {
@@ -189,7 +196,6 @@ const AddShop = () => {
         async (position) => {
           const { latitude, longitude } = position.coords;
           try {
-            // Using combination of OpenStreetMap and Google's Geocoding API for better results
             const response = await fetch(
               `https://nominatim.openstreetmap.org/reverse?` +
               `format=json&lat=${latitude}&lon=${longitude}&` +
@@ -203,7 +209,6 @@ const AddShop = () => {
             const data = await response.json();
             console.log("Location data from API:", data);
             
-            // More robust location data extraction with fallbacks
             const area = data.address.suburb || 
                         data.address.neighbourhood || 
                         data.address.residential || 
@@ -213,7 +218,6 @@ const AddShop = () => {
                         
             const pincode = data.address.postcode || "Unknown Pincode";
 
-            // Construct a detailed address
             const addressParts = [];
             if (data.address.road || data.address.street) addressParts.push(data.address.road || data.address.street);
             if (data.address.house_number) addressParts.push(data.address.house_number);
@@ -246,7 +250,6 @@ const AddShop = () => {
           } catch (error) {
             console.error("Error fetching location details:", error);
             
-            // Fallback to basic coordinates-based location if API fails
             setShopData(prev => ({
               ...prev,
               latitude,
@@ -306,7 +309,6 @@ const AddShop = () => {
 
     try {
       if (isNewShop) {
-        // Adding a new shop
         const { data: shopResult, error: shopError } = await supabase
           .from('shops')
           .insert([{
@@ -346,11 +348,9 @@ const AddShop = () => {
           description: "Shop and medicines have been added successfully."
         });
         
-        // Update the local shops list
         await fetchUserShops();
         setSelectedShopId(shopResult.id);
       } else if (editMode) {
-        // Updating existing shop
         const { error: shopError } = await supabase
           .from('shops')
           .update({
@@ -370,7 +370,6 @@ const AddShop = () => {
           description: "Shop details updated successfully."
         });
         
-        // Update the local shops list
         await fetchUserShops();
         setEditMode(false);
       }
@@ -400,7 +399,6 @@ const AddShop = () => {
         description: "Medicine stock has been updated successfully."
       });
 
-      // Update local state
       if (selectedShopId) {
         await fetchShopMedicines(selectedShopId);
       }
@@ -431,6 +429,99 @@ const AddShop = () => {
       const newMedicines = medicines.filter((_, i) => i !== index);
       setMedicines(newMedicines);
     }
+  };
+
+  const addNewMedicineToShop = async () => {
+    if (!selectedShopId) return;
+    
+    if (!newMedicine.name || !newMedicine.price || !newMedicine.stock_quantity) {
+      toast({
+        variant: "destructive",
+        title: "Missing information",
+        description: "Please fill in all required fields"
+      });
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('medicines')
+        .insert({
+          shop_id: selectedShopId,
+          name: newMedicine.name,
+          description: newMedicine.description,
+          price: parseFloat(newMedicine.price),
+          stock_quantity: parseInt(newMedicine.stock_quantity),
+        })
+        .select();
+
+      if (error) throw error;
+
+      toast({
+        title: "Success!",
+        description: "Medicine has been added to your shop."
+      });
+
+      fetchShopMedicines(selectedShopId);
+      
+      setNewMedicine({ 
+        name: "", 
+        description: "", 
+        price: "", 
+        stock_quantity: "" 
+      });
+      
+      setAddingNewMedicine(false);
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Error adding medicine",
+        description: error.message
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const removeMedicineFromShop = async (medicineId: string) => {
+    if (!confirm("Are you sure you want to remove this medicine?")) {
+      return;
+    }
+    
+    setRemovingMedicine(true);
+    try {
+      const { error } = await supabase
+        .from('medicines')
+        .delete()
+        .eq('id', medicineId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Medicine removed",
+        description: "The medicine has been removed from your shop."
+      });
+
+      if (selectedShopId) {
+        fetchShopMedicines(selectedShopId);
+      }
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Error removing medicine",
+        description: error.message
+      });
+    } finally {
+      setRemovingMedicine(false);
+    }
+  };
+
+  const handleNewMedicineChange = (field: keyof Medicine, value: string) => {
+    setNewMedicine(prev => ({
+      ...prev,
+      [field]: value
+    }));
   };
 
   return (
@@ -505,7 +596,87 @@ const AddShop = () => {
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <h2 className="text-xl font-semibold text-gray-900">Medicines Stock</h2>
+                  <Button
+                    onClick={() => setAddingNewMedicine(true)}
+                    className="gap-2"
+                  >
+                    <Plus size={16} />
+                    Add Medicine
+                  </Button>
                 </div>
+
+                {addingNewMedicine && (
+                  <div className="p-4 border rounded-lg bg-white mb-6">
+                    <h3 className="font-medium text-lg mb-4">Add New Medicine</h3>
+                    <div className="grid grid-cols-2 gap-4 mb-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Medicine Name
+                        </label>
+                        <Input
+                          required
+                          value={newMedicine.name}
+                          onChange={(e) => handleNewMedicineChange("name", e.target.value)}
+                          placeholder="Medicine name"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Description
+                        </label>
+                        <Input
+                          value={newMedicine.description}
+                          onChange={(e) => handleNewMedicineChange("description", e.target.value)}
+                          placeholder="Description"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Price
+                        </label>
+                        <Input
+                          required
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={newMedicine.price}
+                          onChange={(e) => handleNewMedicineChange("price", e.target.value)}
+                          placeholder="Price"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Stock Quantity
+                        </label>
+                        <Input
+                          required
+                          type="number"
+                          min="0"
+                          value={newMedicine.stock_quantity}
+                          onChange={(e) => handleNewMedicineChange("stock_quantity", e.target.value)}
+                          placeholder="Quantity"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <Button 
+                        variant="outline" 
+                        onClick={() => setAddingNewMedicine(false)}
+                      >
+                        Cancel
+                      </Button>
+                      <Button 
+                        onClick={addNewMedicineToShop}
+                        disabled={loading}
+                      >
+                        {loading ? "Adding..." : "Add Medicine"}
+                      </Button>
+                    </div>
+                  </div>
+                )}
 
                 {shopMedicines.length > 0 ? (
                   <div className="space-y-4">
@@ -552,13 +723,24 @@ const AddShop = () => {
                                     {" "}{medicine.stock_quantity}
                                   </span>
                                 </div>
-                                <Button 
-                                  variant="outline" 
-                                  size="sm" 
-                                  onClick={() => setEditingMedicine(medicine.id)}
-                                >
-                                  Update Stock
-                                </Button>
+                                <div className="flex gap-2">
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    onClick={() => setEditingMedicine(medicine.id)}
+                                  >
+                                    Update Stock
+                                  </Button>
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                    onClick={() => removeMedicineFromShop(medicine.id!)}
+                                    disabled={removingMedicine}
+                                  >
+                                    <Trash2 size={16} />
+                                  </Button>
+                                </div>
                               </div>
                             )}
                           </div>
