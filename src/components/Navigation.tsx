@@ -25,6 +25,25 @@ const Navigation = () => {
     setMobileMenuOpen(!mobileMenuOpen);
   };
 
+  const handleSearchClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    
+    // Scroll to search section on home page
+    if (window.location.pathname !== '/') {
+      window.location.href = '/#search-section';
+    } else {
+      const searchElement = document.getElementById('search-section');
+      if (searchElement) {
+        searchElement.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+    
+    // Close mobile menu if open
+    if (mobileMenuOpen) {
+      setMobileMenuOpen(false);
+    }
+  };
+
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-lg border-b">
       <div className="container mx-auto px-4">
@@ -34,10 +53,14 @@ const Navigation = () => {
           </Link>
           
           <div className="hidden md:flex space-x-8">
-            <Link to="/search" className="flex items-center space-x-1 text-gray-600 hover:text-medical-600 transition-colors">
+            <a 
+              href="/#search-section" 
+              className="flex items-center space-x-1 text-gray-600 hover:text-medical-600 transition-colors"
+              onClick={handleSearchClick}
+            >
               <Search size={18} />
               <span>Search</span>
-            </Link>
+            </a>
             <Link to="/stores" className="flex items-center space-x-1 text-gray-600 hover:text-medical-600 transition-colors">
               <MapPin size={18} />
               <span>Stores</span>
@@ -114,14 +137,14 @@ const Navigation = () => {
         {mobileMenuOpen && (
           <div className="md:hidden bg-white border-t py-4 animate-slideUp">
             <div className="flex flex-col space-y-4">
-              <Link
-                to="/search"
+              <a
+                href="/#search-section"
                 className="flex items-center space-x-2 px-4 py-2 text-gray-600 hover:bg-gray-50 hover:text-medical-600"
-                onClick={() => setMobileMenuOpen(false)}
+                onClick={handleSearchClick}
               >
                 <Search size={18} />
                 <span>Search</span>
-              </Link>
+              </a>
               <Link
                 to="/stores"
                 className="flex items-center space-x-2 px-4 py-2 text-gray-600 hover:bg-gray-50 hover:text-medical-600"

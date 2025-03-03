@@ -278,7 +278,7 @@ const Index = () => {
             </div>
           </div>
 
-          <div className="relative max-w-2xl mx-auto">
+          <div id="search-section" className="relative max-w-2xl mx-auto">
             <div className="relative">
               <input
                 type="text"
