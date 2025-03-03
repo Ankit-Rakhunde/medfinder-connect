@@ -1,12 +1,16 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
 import Navigation from "@/components/Navigation";
-import { Plus, Minus, MapPin, Save, Edit, Trash2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import ShopDetailsForm from "@/components/shops/ShopDetailsForm";
+import MedicineFields from "@/components/shops/MedicineFields";
+import ShopSelector from "@/components/shops/ShopSelector";
+import ShopDetailsDisplay from "@/components/shops/ShopDetailsDisplay";
+import MedicineList from "@/components/shops/MedicineList";
 
 interface Medicine {
   id?: string;
@@ -50,7 +54,6 @@ const AddShop = () => {
     { name: "", description: "", price: "", stock_quantity: "" }
   ]);
 
-  const [editingMedicine, setEditingMedicine] = useState<string | null>(null);
   const [userShops, setUserShops] = useState<Shop[]>([]);
   const [selectedShopId, setSelectedShopId] = useState<string | null>(null);
   const [isNewShop, setIsNewShop] = useState(true);
@@ -402,7 +405,6 @@ const AddShop = () => {
       if (selectedShopId) {
         await fetchShopMedicines(selectedShopId);
       }
-      setEditingMedicine(null);
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -534,407 +536,52 @@ const AddShop = () => {
             {isNewShop ? "Add New Shop" : "Manage Shop"}
           </h1>
 
-          {userShops.length > 0 && (
-            <div className="mb-8">
-              <label htmlFor="shop-select" className="block text-sm font-medium text-gray-700 mb-2">
-                Select a shop to manage
-              </label>
-              <div className="flex gap-2">
-                <select
-                  id="shop-select"
-                  value={selectedShopId || ""}
-                  onChange={(e) => setSelectedShopId(e.target.value || null)}
-                  className="flex-1 h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <option value="">+ Add New Shop</option>
-                  {userShops.map((shop) => (
-                    <option key={shop.id} value={shop.id}>
-                      {shop.name}
-                    </option>
-                  ))}
-                </select>
-                {!isNewShop && !editMode && (
-                  <Button variant="outline" onClick={() => setEditMode(true)}>
-                    <Edit size={16} className="mr-2" />
-                    Edit
-                  </Button>
-                )}
-              </div>
-            </div>
-          )}
+          <ShopSelector
+            userShops={userShops}
+            selectedShopId={selectedShopId}
+            setSelectedShopId={setSelectedShopId}
+            isNewShop={isNewShop}
+            editMode={editMode}
+            setEditMode={setEditMode}
+          />
           
           {selectedShopId && !editMode ? (
             <div className="space-y-8">
-              <div className="bg-white p-6 rounded-lg shadow-sm border">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">{shopData.name}</h2>
-                <div className="space-y-3">
-                  <p className="flex items-start gap-2 text-gray-700">
-                    <MapPin size={18} className="text-gray-500 shrink-0 mt-1" />
-                    <span>{shopData.address}</span>
-                  </p>
-                  {shopData.phone && (
-                    <p className="flex items-center gap-2 text-gray-700">
-                      <span className="font-medium">Phone:</span> {shopData.phone}
-                    </p>
-                  )}
-                  {shopData.maps_link && (
-                    <p className="flex items-center gap-2">
-                      <span className="font-medium">Maps:</span>
-                      <a 
-                        href={shopData.maps_link} 
-                        target="_blank" 
-                        rel="noopener noreferrer" 
-                        className="text-blue-600 hover:underline"
-                      >
-                        View on Google Maps
-                      </a>
-                    </p>
-                  )}
-                </div>
-              </div>
+              <ShopDetailsDisplay shopData={shopData} />
 
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-xl font-semibold text-gray-900">Medicines Stock</h2>
-                  <Button
-                    onClick={() => setAddingNewMedicine(true)}
-                    className="gap-2"
-                  >
-                    <Plus size={16} />
-                    Add Medicine
-                  </Button>
-                </div>
-
-                {addingNewMedicine && (
-                  <div className="p-4 border rounded-lg bg-white mb-6">
-                    <h3 className="font-medium text-lg mb-4">Add New Medicine</h3>
-                    <div className="grid grid-cols-2 gap-4 mb-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Medicine Name
-                        </label>
-                        <Input
-                          required
-                          value={newMedicine.name}
-                          onChange={(e) => handleNewMedicineChange("name", e.target.value)}
-                          placeholder="Medicine name"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Description
-                        </label>
-                        <Input
-                          value={newMedicine.description}
-                          onChange={(e) => handleNewMedicineChange("description", e.target.value)}
-                          placeholder="Description"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Price
-                        </label>
-                        <Input
-                          required
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={newMedicine.price}
-                          onChange={(e) => handleNewMedicineChange("price", e.target.value)}
-                          placeholder="Price"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Stock Quantity
-                        </label>
-                        <Input
-                          required
-                          type="number"
-                          min="0"
-                          value={newMedicine.stock_quantity}
-                          onChange={(e) => handleNewMedicineChange("stock_quantity", e.target.value)}
-                          placeholder="Quantity"
-                        />
-                      </div>
-                    </div>
-                    <div className="flex justify-end gap-2">
-                      <Button 
-                        variant="outline" 
-                        onClick={() => setAddingNewMedicine(false)}
-                      >
-                        Cancel
-                      </Button>
-                      <Button 
-                        onClick={addNewMedicineToShop}
-                        disabled={loading}
-                      >
-                        {loading ? "Adding..." : "Add Medicine"}
-                      </Button>
-                    </div>
-                  </div>
-                )}
-
-                {shopMedicines.length > 0 ? (
-                  <div className="space-y-4">
-                    {shopMedicines.map((medicine) => (
-                      <div key={medicine.id} className="p-4 border rounded-lg bg-white">
-                        <div className="flex justify-between">
-                          <div>
-                            <h3 className="font-medium text-lg">{medicine.name}</h3>
-                            {medicine.description && (
-                              <p className="text-gray-600 text-sm">{medicine.description}</p>
-                            )}
-                            <p className="text-gray-800 mt-1">Price: ₹{medicine.price}</p>
-                          </div>
-                          <div className="text-right">
-                            {editingMedicine === medicine.id ? (
-                              <div className="flex items-center gap-2">
-                                <Input
-                                  type="number"
-                                  className="w-24"
-                                  value={medicine.stock_quantity}
-                                  onChange={(e) => {
-                                    const updatedMedicines = shopMedicines.map(med => 
-                                      med.id === medicine.id 
-                                        ? {...med, stock_quantity: e.target.value} 
-                                        : med
-                                    );
-                                    setShopMedicines(updatedMedicines);
-                                  }}
-                                  min="0"
-                                />
-                                <Button 
-                                  size="sm" 
-                                  onClick={() => updateMedicineStock(medicine.id!, medicine.stock_quantity)}
-                                  disabled={updatingStock}
-                                >
-                                  <Save size={16} />
-                                </Button>
-                              </div>
-                            ) : (
-                              <div className="flex flex-col items-end">
-                                <div className="mb-1">
-                                  <span className="font-medium">Stock:</span> 
-                                  <span className={parseInt(medicine.stock_quantity) > 10 ? "text-green-600" : "text-red-600"}>
-                                    {" "}{medicine.stock_quantity}
-                                  </span>
-                                </div>
-                                <div className="flex gap-2">
-                                  <Button 
-                                    variant="outline" 
-                                    size="sm" 
-                                    onClick={() => setEditingMedicine(medicine.id)}
-                                  >
-                                    Update Stock
-                                  </Button>
-                                  <Button 
-                                    variant="outline" 
-                                    size="sm"
-                                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                    onClick={() => removeMedicineFromShop(medicine.id!)}
-                                    disabled={removingMedicine}
-                                  >
-                                    <Trash2 size={16} />
-                                  </Button>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8 bg-gray-50 rounded-lg">
-                    <p className="text-gray-500">No medicines found for this shop</p>
-                  </div>
-                )}
-              </div>
+              <MedicineList
+                shopMedicines={shopMedicines}
+                setShopMedicines={setShopMedicines}
+                selectedShopId={selectedShopId}
+                updateMedicineStock={updateMedicineStock}
+                removeMedicineFromShop={removeMedicineFromShop}
+                updatingStock={updatingStock}
+                removingMedicine={removingMedicine}
+                loading={loading}
+                newMedicine={newMedicine}
+                handleNewMedicineChange={handleNewMedicineChange}
+                addNewMedicineToShop={addNewMedicineToShop}
+                addingNewMedicine={addingNewMedicine}
+                setAddingNewMedicine={setAddingNewMedicine}
+              />
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-8">
-              <div className="space-y-6">
-                <h2 className="text-xl font-semibold text-gray-900">Shop Details</h2>
-                
-                <div>
-                  <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
-                    Shop Name
-                  </label>
-                  <Input
-                    id="name"
-                    required
-                    value={shopData.name}
-                    onChange={(e) => setShopData(prev => ({ ...prev, name: e.target.value }))}
-                    placeholder="Enter shop name"
-                  />
-                </div>
-
-                <div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={getCurrentLocation}
-                    disabled={locationLoading}
-                    className="w-full mb-4"
-                  >
-                    {locationLoading ? "Detecting Location..." : "Detect Current Location"}
-                  </Button>
-                  
-                  {(locationDetails.area || locationDetails.pincode || shopData.latitude) && (
-                    <div className="p-4 bg-gray-50 rounded-lg space-y-2 text-sm">
-                      {locationDetails.area && (
-                        <p className="flex items-center gap-2">
-                          <MapPin size={16} className="text-medical-600" />
-                          <span className="font-medium">Area:</span> {locationDetails.area}
-                        </p>
-                      )}
-                      {locationDetails.pincode && (
-                        <p className="flex items-center gap-2">
-                          <MapPin size={16} className="text-medical-600" />
-                          <span className="font-medium">Pincode:</span> {locationDetails.pincode}
-                        </p>
-                      )}
-                      {shopData.latitude && shopData.longitude && (
-                        <p className="text-xs text-gray-500">
-                          Coordinates: {shopData.latitude.toFixed(6)}, {shopData.longitude.toFixed(6)}
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                <div>
-                  <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-2">
-                    Address
-                  </label>
-                  <Input
-                    id="address"
-                    required
-                    value={shopData.address}
-                    onChange={(e) => setShopData(prev => ({ ...prev, address: e.target.value }))}
-                    placeholder="Enter shop address"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="maps_link" className="block text-sm font-medium text-gray-700 mb-2">
-                    Google Maps Link
-                  </label>
-                  <Input
-                    id="maps_link"
-                    type="url"
-                    value={shopData.maps_link}
-                    onChange={(e) => setShopData(prev => ({ ...prev, maps_link: e.target.value }))}
-                    placeholder="Enter Google Maps link"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
-                    Phone Number
-                  </label>
-                  <Input
-                    id="phone"
-                    type="tel"
-                    value={shopData.phone}
-                    onChange={(e) => setShopData(prev => ({ ...prev, phone: e.target.value }))}
-                    placeholder="Enter phone number"
-                  />
-                </div>
-              </div>
+              <ShopDetailsForm
+                shopData={shopData}
+                setShopData={setShopData}
+                locationDetails={locationDetails}
+                locationLoading={locationLoading}
+                getCurrentLocation={getCurrentLocation}
+              />
 
               {isNewShop && (
-                <div className="space-y-6">
-                  <div className="flex justify-between items-center">
-                    <h2 className="text-xl font-semibold text-gray-900">Medicines Available</h2>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={addMedicineField}
-                      className="gap-2"
-                    >
-                      <Plus size={16} />
-                      Add Medicine
-                    </Button>
-                  </div>
-
-                  {medicines.map((medicine, index) => (
-                    <div key={index} className="p-4 border rounded-lg space-y-4">
-                      <div className="flex justify-between items-center">
-                        <h3 className="font-medium">Medicine #{index + 1}</h3>
-                        {medicines.length > 1 && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeMedicineField(index)}
-                            className="text-red-600 hover:text-red-700"
-                          >
-                            <Minus size={16} />
-                          </Button>
-                        )}
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Medicine Name
-                          </label>
-                          <Input
-                            required
-                            value={medicine.name}
-                            onChange={(e) => handleMedicineChange(index, "name", e.target.value)}
-                            placeholder="Medicine name"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Description
-                          </label>
-                          <Input
-                            value={medicine.description}
-                            onChange={(e) => handleMedicineChange(index, "description", e.target.value)}
-                            placeholder="Description"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Price
-                          </label>
-                          <Input
-                            required
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={medicine.price}
-                            onChange={(e) => handleMedicineChange(index, "price", e.target.value)}
-                            placeholder="Price"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Stock Quantity
-                          </label>
-                          <Input
-                            required
-                            type="number"
-                            min="0"
-                            value={medicine.stock_quantity}
-                            onChange={(e) => handleMedicineChange(index, "stock_quantity", e.target.value)}
-                            placeholder="Quantity"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <MedicineFields
+                  medicines={medicines}
+                  handleMedicineChange={handleMedicineChange}
+                  addMedicineField={addMedicineField}
+                  removeMedicineField={removeMedicineField}
+                />
               )}
 
               <Button type="submit" className="w-full" disabled={loading}>
