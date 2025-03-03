@@ -1,6 +1,6 @@
 
 import { Link } from "react-router-dom";
-import { ShoppingCart, User, Search, MapPin, Phone, Plus, LogOut } from "lucide-react";
+import { ShoppingCart, User, Search, MapPin, Phone, Plus, LogOut, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -11,12 +11,18 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useState } from "react";
 
 const Navigation = () => {
   const { user, signOut } = useAuth();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleSignOut = async () => {
     await signOut();
+  };
+
+  const toggleMobileMenu = () => {
+    setMobileMenuOpen(!mobileMenuOpen);
   };
 
   return (
@@ -56,6 +62,15 @@ const Navigation = () => {
               </span>
             </Link>
             
+            {/* Mobile menu button */}
+            <button 
+              className="md:hidden text-gray-600 hover:text-medical-600 transition-colors"
+              onClick={toggleMobileMenu}
+              aria-label="Toggle mobile menu"
+            >
+              {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
+            
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -94,6 +109,46 @@ const Navigation = () => {
             )}
           </div>
         </div>
+
+        {/* Mobile menu - slide down when open */}
+        {mobileMenuOpen && (
+          <div className="md:hidden bg-white border-t py-4 animate-slideUp">
+            <div className="flex flex-col space-y-4">
+              <Link
+                to="/search"
+                className="flex items-center space-x-2 px-4 py-2 text-gray-600 hover:bg-gray-50 hover:text-medical-600"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <Search size={18} />
+                <span>Search</span>
+              </Link>
+              <Link
+                to="/stores"
+                className="flex items-center space-x-2 px-4 py-2 text-gray-600 hover:bg-gray-50 hover:text-medical-600"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <MapPin size={18} />
+                <span>Stores</span>
+              </Link>
+              <Link
+                to="/doctors"
+                className="flex items-center space-x-2 px-4 py-2 text-gray-600 hover:bg-gray-50 hover:text-medical-600"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <Phone size={18} />
+                <span>Doctors</span>
+              </Link>
+              <Link
+                to="/add-shop"
+                className="flex items-center space-x-2 px-4 py-2 text-gray-600 hover:bg-gray-50 hover:text-medical-600"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <Plus size={18} />
+                <span>Add Shop</span>
+              </Link>
+            </div>
+          </div>
+        )}
       </div>
     </nav>
   );
