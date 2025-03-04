@@ -1,5 +1,6 @@
+
 import { useState, useEffect } from "react";
-import { Search, MapPin, Phone, Plus } from "lucide-react";
+import { Search, MapPin, Phone, Plus, ExternalLink } from "lucide-react";
 import { Link } from "react-router-dom";
 import Navigation from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
@@ -188,7 +189,8 @@ const Index = () => {
             address,
             phone,
             latitude,
-            longitude
+            longitude,
+            maps_link
           )
         `)
         .ilike('name', `%${debouncedQuery}%`);
@@ -223,6 +225,17 @@ const Index = () => {
     },
     enabled: debouncedQuery.length > 0
   });
+
+  // Helper function to generate Google Maps link
+  const getGoogleMapsLink = (shop: any) => {
+    if (shop.maps_link) return shop.maps_link;
+    
+    if (shop.latitude && shop.longitude) {
+      return `https://www.google.com/maps?q=${shop.latitude},${shop.longitude}`;
+    }
+    
+    return null;
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-gray-50">
@@ -319,6 +332,9 @@ const Index = () => {
                         );
                       }
 
+                      // Get the Google Maps link for this shop
+                      const mapsLink = result.shops ? getGoogleMapsLink(result.shops) : null;
+
                       return (
                         <div key={index} className="p-4 hover:bg-gray-50">
                           <div className="flex justify-between items-start mb-2">
@@ -341,12 +357,30 @@ const Index = () => {
                               {result.shops.phone && (
                                 <p className="flex items-center gap-1 mt-1">
                                   <Phone size={16} />
-                                  {result.shops.phone}
+                                  <a href={`tel:${result.shops.phone}`} className="hover:text-medical-600 transition-colors">
+                                    {result.shops.phone}
+                                  </a>
                                 </p>
                               )}
                               <p className="mt-1 text-xs text-gray-500">
                                 Stock available: {result.stock_quantity}
                               </p>
+                              {mapsLink && (
+                                <div className="mt-2">
+                                  <Button variant="outline" size="sm" className="flex items-center gap-1 h-7 text-xs px-2" asChild>
+                                    <a 
+                                      href={mapsLink} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer" 
+                                      className="text-blue-600"
+                                    >
+                                      <MapPin size={12} />
+                                      View on Maps
+                                      <ExternalLink size={10} />
+                                    </a>
+                                  </Button>
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
