@@ -1,7 +1,8 @@
 
-import { MapPin, Phone, ExternalLink } from "lucide-react";
+import { MapPin, Phone, ExternalLink, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LocationDetails } from "./LocationDetector";
+import { toast } from "@/hooks/use-toast";
 
 interface SearchResultsProps {
   searchQuery: string;
@@ -39,6 +40,50 @@ export const SearchResults = ({
     }
     
     return null;
+  };
+
+  // Function to handle adding item to cart
+  const handleAddToCart = (medicine: any) => {
+    // Get existing cart items from localStorage or initialize empty array
+    const existingCart = JSON.parse(localStorage.getItem('cart') || '[]');
+    
+    // Check if item already exists in cart
+    const existingItemIndex = existingCart.findIndex(
+      (item: any) => item.id === medicine.id
+    );
+    
+    if (existingItemIndex >= 0) {
+      // If item exists, increase quantity
+      existingCart[existingItemIndex].quantity += 1;
+      toast({
+        title: "Quantity updated",
+        description: `Added one more ${medicine.name} to your cart`,
+      });
+    } else {
+      // If item doesn't exist, add it with quantity 1
+      existingCart.push({
+        id: medicine.id,
+        name: medicine.name,
+        price: medicine.price,
+        quantity: 1,
+        shop: medicine.shops ? medicine.shops.name : 'Unknown shop',
+        shopId: medicine.shops ? medicine.shops.id : null
+      });
+      toast({
+        title: "Added to cart",
+        description: `${medicine.name} has been added to your cart`,
+      });
+    }
+    
+    // Save updated cart to localStorage
+    localStorage.setItem('cart', JSON.stringify(existingCart));
+    
+    // Update cart count in Navigation if possible
+    const cartCountElement = document.querySelector('.cart-count');
+    if (cartCountElement) {
+      const totalItems = existingCart.reduce((total: number, item: any) => total + item.quantity, 0);
+      cartCountElement.textContent = totalItems.toString();
+    }
   };
 
   if (isLoading) {
@@ -81,9 +126,20 @@ export const SearchResults = ({
           <div key={index} className="p-4 hover:bg-gray-50">
             <div className="flex justify-between items-start mb-2">
               <h3 className="font-medium text-gray-900">{result.name}</h3>
-              <span className="text-medical-600 font-medium">
-                ₹{result.price.toFixed(2)}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-medical-600 font-medium">
+                  ₹{result.price.toFixed(2)}
+                </span>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="text-medical-600 hover:bg-medical-50"
+                  onClick={() => handleAddToCart(result)}
+                >
+                  <ShoppingCart size={14} className="mr-1" />
+                  Add
+                </Button>
+              </div>
             </div>
             {result.shops && (
               <div className="text-sm text-gray-600">
@@ -104,25 +160,24 @@ export const SearchResults = ({
                     </a>
                   </p>
                 )}
-                <p className="mt-1 text-xs text-gray-500">
-                  Stock available: {result.stock_quantity}
-                </p>
-                {mapsLink && (
-                  <div className="mt-2">
-                    <Button variant="outline" size="sm" className="flex items-center gap-1 h-7 text-xs px-2" asChild>
+                <div className="flex justify-between items-center mt-1">
+                  <p className="text-xs text-gray-500">
+                    Stock available: {result.stock_quantity}
+                  </p>
+                  {mapsLink && (
+                    <Button variant="ghost" size="sm" className="flex items-center h-7 text-xs px-2 text-blue-600" asChild>
                       <a 
                         href={mapsLink} 
                         target="_blank" 
-                        rel="noopener noreferrer" 
-                        className="text-blue-600"
+                        rel="noopener noreferrer"
                       >
-                        <MapPin size={12} />
+                        <MapPin size={12} className="mr-1" />
                         View on Maps
-                        <ExternalLink size={10} />
+                        <ExternalLink size={10} className="ml-1" />
                       </a>
                     </Button>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             )}
           </div>

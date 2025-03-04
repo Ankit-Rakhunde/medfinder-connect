@@ -11,11 +11,35 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const Navigation = () => {
   const { user, signOut } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [cartCount, setCartCount] = useState(0);
+
+  useEffect(() => {
+    // Load cart count from localStorage on component mount
+    const updateCartCount = () => {
+      const cartItems = JSON.parse(localStorage.getItem('cart') || '[]');
+      const count = cartItems.reduce((total: number, item: any) => total + item.quantity, 0);
+      setCartCount(count);
+    };
+
+    // Update count on mount
+    updateCartCount();
+
+    // Listen for storage events (when localStorage changes in other tabs)
+    window.addEventListener('storage', updateCartCount);
+
+    // Set up interval to periodically check for cart updates
+    const intervalId = setInterval(updateCartCount, 1000);
+
+    return () => {
+      window.removeEventListener('storage', updateCartCount);
+      clearInterval(intervalId);
+    };
+  }, []);
 
   const handleSignOut = async () => {
     await signOut();
@@ -80,8 +104,8 @@ const Navigation = () => {
           <div className="flex items-center space-x-4">
             <Link to="/cart" className="relative text-gray-600 hover:text-medical-600 transition-colors">
               <ShoppingCart size={20} />
-              <span className="absolute -top-2 -right-2 bg-medical-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
-                0
+              <span className="cart-count absolute -top-2 -right-2 bg-medical-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
+                {cartCount}
               </span>
             </Link>
             
