@@ -1,263 +1,350 @@
 
-import { useState, useEffect } from "react";
-import { MapPin, Phone, ExternalLink } from "lucide-react";
-import Navigation from "@/components/Navigation";
-import { Button } from "@/components/ui/button";
-import { motion } from "framer-motion";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/components/ui/use-toast";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-
-interface Shop {
-  id: string;
-  name: string;
-  address: string;
-  phone: string | null;
-  latitude: number | null;
-  longitude: number | null;
-  maps_link: string | null;
-  created_at: string;
-}
+import { 
+  Store, Building2, PackageSearch, ShoppingBag, MapPin, 
+  Phone, ExternalLink, Filter, Layers, GripVertical
+} from "lucide-react";
+import Navigation from "../components/Navigation";
+import { supabase } from "../integrations/supabase/client";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarHeader,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
 
 const Stores = () => {
-  const { toast } = useToast();
-  const [userCoordinates, setUserCoordinates] = useState<{ latitude: number; longitude: number } | null>(null);
-  const [isGettingLocation, setIsGettingLocation] = useState(false);
+  const navigate = useNavigate();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filteredStores, setFilteredStores] = useState<any[]>([]);
+  const [activeCategory, setActiveCategory] = useState<string>("all");
+  const [viewMode, setViewMode] = useState<string>("grid");
 
-  // Get user's current location with improved accuracy
-  const getCurrentLocation = () => {
-    setIsGettingLocation(true);
-    if ("geolocation" in navigator) {
-      const options = {
-        enableHighAccuracy: true,
-        timeout: 15000,
-        maximumAge: 0
-      };
-      
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords;
-          setUserCoordinates({ latitude, longitude });
-          console.log("Location detected:", latitude, longitude);
-          setIsGettingLocation(false);
-          
-          toast({
-            title: "Location detected",
-            description: "Showing stores nearest to your location",
-          });
-        },
-        (error) => {
-          console.error("Error getting location:", error);
-          setIsGettingLocation(false);
-          
-          let errorMessage = "Could not get your location";
-          switch(error.code) {
-            case error.PERMISSION_DENIED:
-              errorMessage = "Please enable location services in your browser";
-              break;
-            case error.POSITION_UNAVAILABLE:
-              errorMessage = "Location information is unavailable";
-              break;
-            case error.TIMEOUT:
-              errorMessage = "Location request timed out";
-              break;
-          }
-          
-          toast({
-            variant: "destructive",
-            title: "Error getting location",
-            description: errorMessage,
-          });
-        },
-        options
-      );
-    } else {
-      setIsGettingLocation(false);
-      toast({
-        variant: "destructive",
-        title: "Geolocation not supported",
-        description: "Your browser doesn't support location services.",
-      });
-    }
-  };
-
-  useEffect(() => {
-    getCurrentLocation();
-  }, []);
-
-  // Calculate distance between two coordinates
-  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-    if (!lat1 || !lon1 || !lat2 || !lon2) return null;
-    
-    const R = 6371; // Earth's radius in km
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-      Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    const distance = R * c; // Distance in km
-    return distance;
-  };
-
-  // Fetch stores data
-  const { data: shops, isLoading, error } = useQuery({
-    queryKey: ['shops'],
+  const { data: stores, isLoading } = useQuery({
+    queryKey: ["stores"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('shops')
-        .select('*')
-        .order('name');
-      
+      const { data, error } = await supabase.from("shops").select("*");
       if (error) throw error;
-      return data as Shop[];
-    }
+      return data || [];
+    },
   });
 
-  // Sort shops by distance if user location is available
-  const sortedShops = userCoordinates && shops 
-    ? [...shops].sort((a, b) => {
-        const distanceA = a.latitude && a.longitude 
-          ? calculateDistance(userCoordinates.latitude, userCoordinates.longitude, a.latitude, a.longitude) 
-          : Infinity;
-        const distanceB = b.latitude && b.longitude 
-          ? calculateDistance(userCoordinates.latitude, userCoordinates.longitude, b.latitude, b.longitude) 
-          : Infinity;
-        
-        return (distanceA || Infinity) - (distanceB || Infinity);
-      })
-    : shops;
+  useEffect(() => {
+    if (stores) {
+      let filtered = [...stores];
+      
+      // Apply category filter
+      if (activeCategory !== "all") {
+        // This is a placeholder for category filtering
+        // In a real app, you would filter based on store categories
+      }
+      
+      // Apply search filter
+      if (searchTerm) {
+        filtered = filtered.filter(
+          (store) =>
+            store.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            store.address.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+      }
+      
+      setFilteredStores(filtered);
+    }
+  }, [stores, searchTerm, activeCategory]);
 
-  if (error) {
-    toast({
-      variant: "destructive",
-      title: "Error loading stores",
-      description: "There was a problem loading the stores. Please try again later.",
-    });
-  }
+  // Generate a Google Maps link if we have coordinates but no explicit maps_link
+  const getGoogleMapsLink = (shop: any) => {
+    if (shop.maps_link) return shop.maps_link;
+    
+    if (shop.latitude && shop.longitude) {
+      return `https://www.google.com/maps?q=${shop.latitude},${shop.longitude}`;
+    }
+    
+    return null;
+  };
+
+  const categories = [
+    { id: "all", name: "All Stores", icon: Store },
+    { id: "pharmacy", name: "Pharmacies", icon: Building2 },
+    { id: "ayurvedic", name: "Ayurvedic", icon: PackageSearch },
+    { id: "general", name: "General Stores", icon: ShoppingBag },
+  ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white to-gray-50">
+    <div className="min-h-screen bg-gray-50">
       <Navigation />
       
-      <main className="container mx-auto px-4 pt-32 pb-16">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="max-w-4xl mx-auto"
-        >
-          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-8 text-center">
-            Medical Stores
-          </h1>
+      <SidebarProvider>
+        <div className="flex w-full min-h-[calc(100vh-64px)]">
+          {/* Sidebar */}
+          <Sidebar className="border-r">
+            <SidebarHeader className="px-6 py-4">
+              <h2 className="text-xl font-semibold flex items-center gap-2">
+                <Store className="h-5 w-5" />
+                <span>Store Directory</span>
+              </h2>
+            </SidebarHeader>
+            
+            <SidebarContent>
+              <SidebarGroup>
+                <SidebarGroupLabel>Categories</SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    {categories.map((category) => (
+                      <SidebarMenuItem key={category.id}>
+                        <SidebarMenuButton 
+                          onClick={() => setActiveCategory(category.id)}
+                          className={activeCategory === category.id ? "bg-sidebar-accent text-sidebar-accent-foreground" : ""}
+                        >
+                          <category.icon className="h-5 w-5" />
+                          <span>{category.name}</span>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ))}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+              
+              <SidebarGroup>
+                <SidebarGroupLabel>View Options</SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton 
+                        onClick={() => setViewMode("grid")}
+                        className={viewMode === "grid" ? "bg-sidebar-accent text-sidebar-accent-foreground" : ""}
+                      >
+                        <Layers className="h-5 w-5" />
+                        <span>Grid View</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        onClick={() => setViewMode("list")}
+                        className={viewMode === "list" ? "bg-sidebar-accent text-sidebar-accent-foreground" : ""}
+                      >
+                        <GripVertical className="h-5 w-5" />
+                        <span>List View</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            </SidebarContent>
+            
+            <SidebarFooter className="p-6">
+              <Button 
+                className="w-full"
+                onClick={() => navigate("/add-shop")}
+              >
+                Register Your Store
+              </Button>
+            </SidebarFooter>
+          </Sidebar>
 
-          <p className="text-lg text-gray-600 mb-8 text-center">
-            Find medical stores near you and check their contact information.
-          </p>
-          
-          <div className="flex justify-center mb-8">
-            <Button 
-              onClick={getCurrentLocation} 
-              disabled={isGettingLocation}
-              variant="outline"
-              className="flex items-center gap-2"
-            >
-              <MapPin size={16} />
-              {isGettingLocation ? "Detecting Location..." : userCoordinates ? "Update Location" : "Detect Location"}
-            </Button>
-          </div>
-
-          {isLoading ? (
-            <div className="grid grid-cols-1 gap-8">
-              {[1, 2, 3].map((item) => (
-                <div key={item} className="animate-pulse p-6 bg-white rounded-xl shadow-sm">
-                  <div className="h-6 bg-gray-200 rounded w-3/4 mb-4"></div>
-                  <div className="h-4 bg-gray-200 rounded w-full mb-2"></div>
-                  <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+          {/* Main Content */}
+          <div className="flex-1 overflow-auto">
+            <div className="container py-8 px-6">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+                <div>
+                  <h1 className="text-3xl font-bold text-gray-900">Medical Stores</h1>
+                  <p className="text-gray-600 mt-1">
+                    Find pharmacies and medical stores near you
+                  </p>
                 </div>
-              ))}
-            </div>
-          ) : sortedShops && sortedShops.length > 0 ? (
-            <div className="grid grid-cols-1 gap-8">
-              {sortedShops.map((shop) => {
-                let distance = null;
-                if (userCoordinates && shop.latitude && shop.longitude) {
-                  distance = calculateDistance(
-                    userCoordinates.latitude,
-                    userCoordinates.longitude,
-                    shop.latitude,
-                    shop.longitude
-                  );
-                }
+                
+                <div className="relative w-full md:w-80">
+                  <Filter className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+                  <Input
+                    type="search"
+                    placeholder="Search by name or location"
+                    className="pl-9"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+              </div>
 
-                return (
-                  <motion.div
-                    key={shop.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3 }}
-                    className="p-6 bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
+              <Separator className="my-6" />
+              
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-lg font-medium text-gray-700">
+                  {isLoading ? "Loading stores..." : 
+                   filteredStores.length === 0 ? "No stores found" : 
+                   `${filteredStores.length} stores found`}
+                </h2>
+                
+                <div className="flex gap-2 md:hidden">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setViewMode("grid")}
+                    className={viewMode === "grid" ? "bg-primary/10" : ""}
                   >
-                    <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
-                      <div>
-                        <h2 className="text-xl font-semibold text-gray-900 mb-3">{shop.name}</h2>
-                        <div className="space-y-2 text-gray-600">
-                          <p className="flex items-start gap-2">
-                            <MapPin className="text-medical-600 shrink-0 mt-1" size={18} />
-                            <span>{shop.address}</span>
-                            {distance && (
-                              <span className="text-medical-600 font-medium ml-2">
-                                ({distance.toFixed(1)} km away)
-                              </span>
-                            )}
-                          </p>
-                          {shop.phone && (
-                            <p className="flex items-center gap-2">
-                              <Phone className="text-medical-600" size={18} />
-                              <a href={`tel:${shop.phone}`} className="hover:text-medical-600 transition-colors">
-                                {shop.phone}
-                              </a>
-                            </p>
+                    <Layers className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setViewMode("list")}
+                    className={viewMode === "list" ? "bg-primary/10" : ""}
+                  >
+                    <GripVertical className="h-4 w-4" />
+                  </Button>
+                  <SidebarTrigger />
+                </div>
+              </div>
+              
+              {isLoading ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {[1, 2, 3, 4, 5, 6].map((item) => (
+                    <Card key={item} className="animate-pulse">
+                      <CardHeader className="bg-gray-100 h-32"></CardHeader>
+                      <CardContent className="pt-4">
+                        <div className="h-4 bg-gray-200 rounded w-3/4 mb-3"></div>
+                        <div className="h-3 bg-gray-200 rounded w-1/2 mb-2"></div>
+                        <div className="h-3 bg-gray-200 rounded w-4/5"></div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : filteredStores.length === 0 ? (
+                <div className="text-center py-16">
+                  <Store className="mx-auto h-12 w-12 text-gray-400" />
+                  <h3 className="mt-4 text-lg font-medium text-gray-900">No stores found</h3>
+                  <p className="mt-1 text-gray-500">Try adjusting your search or filter parameters</p>
+                </div>
+              ) : viewMode === "grid" ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {filteredStores.map((store) => {
+                    const mapsLink = getGoogleMapsLink(store);
+                    return (
+                      <Card key={store.id} className="overflow-hidden hover:shadow-md transition-shadow">
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-xl flex justify-between items-start">
+                            <span>{store.name}</span>
+                          </CardTitle>
+                          {store.description && (
+                            <CardDescription>{store.description}</CardDescription>
                           )}
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                          <div className="flex items-start gap-2">
+                            <MapPin size={18} className="text-gray-500 shrink-0 mt-1" />
+                            <span className="text-gray-700">{store.address}</span>
+                          </div>
+                          {store.phone && (
+                            <div className="flex items-center gap-2">
+                              <Phone size={18} className="text-gray-500" />
+                              <a href={`tel:${store.phone}`} className="text-gray-700 hover:text-medical-600 transition-colors">
+                                {store.phone}
+                              </a>
+                            </div>
+                          )}
+                        </CardContent>
+                        <CardFooter className="border-t pt-4 flex justify-between">
+                          {mapsLink ? (
+                            <Button variant="outline" size="sm" asChild className="gap-1 text-blue-600">
+                              <a 
+                                href={mapsLink} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                              >
+                                <MapPin size={14} />
+                                View on Maps
+                                <ExternalLink size={12} />
+                              </a>
+                            </Button>
+                          ) : (
+                            <span className="text-sm text-gray-500">No map available</span>
+                          )}
+                          <Button 
+                            variant="default" 
+                            size="sm" 
+                            className="bg-medical-600 hover:bg-medical-700"
+                            onClick={() => navigate(`/stores/${store.id}`)}
+                          >
+                            View Products
+                          </Button>
+                        </CardFooter>
+                      </Card>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {filteredStores.map((store) => {
+                    const mapsLink = getGoogleMapsLink(store);
+                    return (
+                      <div key={store.id} className="bg-white p-4 rounded-lg border shadow-sm flex flex-col md:flex-row gap-4 hover:shadow-md transition-shadow">
+                        <div className="flex-1">
+                          <h3 className="text-lg font-medium text-gray-900">{store.name}</h3>
+                          {store.description && (
+                            <p className="text-gray-600 text-sm mt-1">{store.description}</p>
+                          )}
+                          <div className="mt-3 space-y-2">
+                            <div className="flex items-start gap-2">
+                              <MapPin size={18} className="text-gray-500 shrink-0 mt-1" />
+                              <span className="text-gray-700">{store.address}</span>
+                            </div>
+                            {store.phone && (
+                              <div className="flex items-center gap-2">
+                                <Phone size={18} className="text-gray-500" />
+                                <a href={`tel:${store.phone}`} className="text-gray-700 hover:text-medical-600 transition-colors">
+                                  {store.phone}
+                                </a>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex flex-row md:flex-col items-center gap-3 justify-end">
+                          {mapsLink ? (
+                            <Button variant="outline" size="sm" asChild className="gap-1 text-blue-600">
+                              <a 
+                                href={mapsLink} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                              >
+                                <MapPin size={14} />
+                                Maps
+                                <ExternalLink size={12} />
+                              </a>
+                            </Button>
+                          ) : (
+                            <span className="text-sm text-gray-500">No map available</span>
+                          )}
+                          <Button 
+                            variant="default" 
+                            size="sm" 
+                            className="bg-medical-600 hover:bg-medical-700"
+                            onClick={() => navigate(`/stores/${store.id}`)}
+                          >
+                            View Products
+                          </Button>
                         </div>
                       </div>
-                      
-                      <div className="flex flex-wrap gap-2">
-                        {shop.maps_link && (
-                          <Button variant="outline" size="sm" asChild>
-                            <a href={shop.maps_link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1">
-                              <ExternalLink size={16} />
-                              View on Maps
-                            </a>
-                          </Button>
-                        )}
-                        
-                        {shop.latitude && shop.longitude && !shop.maps_link && (
-                          <Button variant="outline" size="sm" asChild>
-                            <a 
-                              href={`https://www.google.com/maps?q=${shop.latitude},${shop.longitude}`} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="flex items-center gap-1"
-                            >
-                              <ExternalLink size={16} />
-                              View on Maps
-                            </a>
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  </motion.div>
-                );
-              })}
+                    );
+                  })}
+                </div>
+              )}
             </div>
-          ) : (
-            <div className="text-center py-12 bg-gray-50 rounded-lg">
-              <p className="text-gray-600">No stores found</p>
-            </div>
-          )}
-        </motion.div>
-      </main>
+          </div>
+        </div>
+      </SidebarProvider>
     </div>
   );
 };
