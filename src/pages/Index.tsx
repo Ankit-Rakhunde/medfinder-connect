@@ -8,11 +8,16 @@ import { useQuery } from "@tanstack/react-query";
 import { LocationDetector, LocationDetails } from "@/components/search/LocationDetector";
 import { MedicineSearch } from "@/components/search/MedicineSearch";
 import { FeatureCard } from "@/components/search/FeatureCard";
+import { useLocationDetection } from "@/hooks/useLocationDetection";
 
 const Index = () => {
   const [debouncedQuery, setDebouncedQuery] = useState("");
-  const [userLocation, setUserLocation] = useState<LocationDetails | null>(null);
-  const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+  const { 
+    userLocation,
+    setUserLocation,
+    isLoadingLocation,
+    setIsLoadingLocation
+  } = useLocationDetection();
 
   const handleSearch = (query: string) => {
     setDebouncedQuery(query);
