@@ -1,8 +1,9 @@
 
 import { useState } from "react";
-import { MapPin } from "lucide-react";
+import { MapPin, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
+import { Separator } from "@/components/ui/separator";
 
 export interface LocationDetails {
   area: string;
@@ -25,9 +26,12 @@ export const LocationDetector = ({
   setIsLoadingLocation 
 }: LocationDetectorProps) => {
   const { toast } = useToast();
+  const [locationError, setLocationError] = useState<string | null>(null);
 
   const getCurrentLocation = () => {
     setIsLoadingLocation(true);
+    setLocationError(null);
+    
     toast({
       title: "Getting your location",
       description: "Please wait while we detect your precise location...",
@@ -36,7 +40,7 @@ export const LocationDetector = ({
     if ("geolocation" in navigator) {
       const options = {
         enableHighAccuracy: true,
-        timeout: 15000,
+        timeout: 30000, // Extended timeout
         maximumAge: 0
       };
 
@@ -46,52 +50,81 @@ export const LocationDetector = ({
           try {
             console.log("Raw coordinates:", latitude, longitude);
             
-            const response = await fetch(
-              `https://nominatim.openstreetmap.org/reverse?` +
-              `format=json&lat=${latitude}&lon=${longitude}&` +
-              `addressdetails=1&zoom=18&accept-language=en`
-            );
+            // Try using multiple geocoding services for better results
+            let locationFound = false;
             
-            if (!response.ok) {
-              throw new Error('Failed to fetch location details');
+            // First attempt with OpenStreetMap's Nominatim API
+            try {
+              const response = await fetch(
+                `https://nominatim.openstreetmap.org/reverse?` +
+                `format=json&lat=${latitude}&lon=${longitude}&` +
+                `addressdetails=1&zoom=18&accept-language=en`,
+                { 
+                  headers: { 
+                    "Accept-Language": "en",
+                    "User-Agent": "MedFinder/1.0" 
+                  } 
+                }
+              );
+              
+              if (!response.ok) {
+                throw new Error('Failed to fetch location details from Nominatim');
+              }
+
+              const data = await response.json();
+              console.log("Location data from Nominatim API:", data);
+              
+              // Extract meaningful location data
+              let area = '';
+              if (data.address) {
+                area = data.address.suburb || 
+                      data.address.neighbourhood || 
+                      data.address.residential || 
+                      data.address.village ||
+                      data.address.town ||
+                      data.address.city_district ||
+                      data.address.city ||
+                      data.address.county ||
+                      "Unknown Area";
+                      
+                const pincode = data.address.postcode || "Unknown Pincode";
+
+                setUserLocation({
+                  area,
+                  pincode,
+                  latitude,
+                  longitude
+                });
+
+                toast({
+                  title: "Location detected",
+                  description: `${area}, ${pincode}`,
+                });
+                
+                locationFound = true;
+              }
+            } catch (nominatimError) {
+              console.error("Error with Nominatim API:", nominatimError);
+              // Will continue to fallback options
             }
-
-            const data = await response.json();
-            console.log("Location data from API:", data);
             
-            const area = data.address.suburb || 
-                        data.address.neighbourhood || 
-                        data.address.residential || 
-                        data.address.city_district ||
-                        data.address.city ||
-                        "Unknown Area";
-                        
-            const pincode = data.address.postcode || "Unknown Pincode";
-
-            if (!area || !pincode) {
-              throw new Error('Could not determine precise location');
+            // If location still not found, use raw coordinates
+            if (!locationFound) {
+              throw new Error('Could not determine precise location from APIs');
             }
             
-            setUserLocation({
-              area,
-              pincode,
-              latitude,
-              longitude
-            });
-
-            toast({
-              title: "Location detected",
-              description: `${area}, ${pincode}`,
-            });
           } catch (error) {
             console.error("Error getting location details:", error);
             
+            // Set a generic location as fallback
             setUserLocation({
               area: "Unknown Area",
               pincode: "Unknown Pincode",
               latitude: latitude,
               longitude: longitude
             });
+            
+            setLocationError("Could not get your precise location. Using coordinates only.");
             
             toast({
               variant: "destructive",
@@ -120,6 +153,8 @@ export const LocationDetector = ({
               break;
           }
 
+          setLocationError(errorMessage);
+          
           toast({
             variant: "destructive",
             title: "Error getting location",
@@ -130,6 +165,8 @@ export const LocationDetector = ({
       );
     } else {
       setIsLoadingLocation(false);
+      setLocationError("Your browser doesn't support location services");
+      
       toast({
         variant: "destructive",
         title: "Geolocation not supported",
@@ -139,35 +176,57 @@ export const LocationDetector = ({
   };
 
   return (
-    <div className="mb-6 p-4 bg-gray-50 rounded-lg inline-block">
-      <div className="flex items-center gap-2 text-sm text-gray-600">
-        <MapPin size={16} className="text-medical-600" />
+    <div className="mb-6 p-4 bg-gray-50 rounded-lg inline-block w-full max-w-md shadow-sm border border-gray-100">
+      <div className="flex flex-col space-y-3">
+        <div className="flex items-center gap-2 text-sm text-gray-600">
+          <MapPin size={16} className="text-medical-600" />
+          <span className="font-medium">Your Location</span>
+        </div>
+        
+        {locationError && (
+          <p className="text-sm text-red-500">{locationError}</p>
+        )}
+        
         {isLoadingLocation ? (
-          <span>Detecting your location...</span>
+          <div className="flex items-center gap-2 text-sm py-1">
+            <Loader2 size={16} className="animate-spin text-medical-600" />
+            <span>Detecting your location...</span>
+          </div>
         ) : userLocation ? (
-          <>
-            <span>Your location: {userLocation.area}, {userLocation.pincode}</span>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={getCurrentLocation}
-              className="text-medical-600 hover:text-medical-700"
-              disabled={isLoadingLocation}
-            >
-              Update
-            </Button>
-          </>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium">{userLocation.area}</p>
+                <p className="text-xs text-gray-500">{userLocation.pincode}</p>
+                {userLocation.latitude && userLocation.longitude && (
+                  <p className="text-xs text-gray-400 mt-1">
+                    Coordinates: {userLocation.latitude.toFixed(6)}, {userLocation.longitude.toFixed(6)}
+                  </p>
+                )}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={getCurrentLocation}
+                className="text-medical-600 hover:text-medical-700"
+                disabled={isLoadingLocation}
+              >
+                Update
+              </Button>
+            </div>
+          </div>
         ) : (
-          <div className="flex items-center gap-2">
-            <span>Location not detected</span>
+          <div className="flex flex-col gap-2">
+            <p className="text-sm">We need your location to find medicines nearby</p>
             <Button
-              variant="ghost"
+              variant="default"
               size="sm"
               onClick={getCurrentLocation}
-              className="text-medical-600 hover:text-medical-700"
+              className="bg-medical-600 hover:bg-medical-700 text-white"
               disabled={isLoadingLocation}
             >
-              Detect Location
+              <MapPin size={16} className="mr-2" />
+              Detect My Location
             </Button>
           </div>
         )}

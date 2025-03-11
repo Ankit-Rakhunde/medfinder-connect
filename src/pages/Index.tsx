@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Search, MapPin, Phone } from "lucide-react";
 import { motion } from "framer-motion";
@@ -17,14 +18,8 @@ const Index = () => {
     setDebouncedQuery(query);
   };
 
-  useEffect(() => {
-    const detectLocationOnMount = async () => {
-      setIsLoadingLocation(true);
-      // This will be handled by the LocationDetector component
-    };
-
-    // Let the LocationDetector handle this instead
-  }, []);
+  // We've removed the auto-detection on mount to give the user more control
+  // Location detection will now only happen when the user clicks the button
 
   const { data: searchResults, isLoading } = useQuery({
     queryKey: ['medicineSearch', debouncedQuery],
