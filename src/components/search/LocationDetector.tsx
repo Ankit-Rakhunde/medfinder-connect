@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { MapPin, Loader2, RefreshCw, CheckCircle, MapIcon } from "lucide-react";
+import { MapPin, Loader2, RefreshCw, CheckCircle, MapIcon, Hash } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { Separator } from "@/components/ui/separator";
@@ -194,7 +194,10 @@ export const LocationDetector = ({
                     <MapIcon size={14} className="text-medical-600" />
                     <p className="text-sm font-semibold">{userLocation.area}</p>
                   </div>
-                  <p className="text-xs text-gray-500 ml-6">{userLocation.pincode}</p>
+                  <div className="flex items-center gap-2 ml-6">
+                    <Hash size={14} className="text-medical-600" />
+                    <p className="text-sm text-gray-700">{userLocation.pincode}</p>
+                  </div>
                 </div>
               </div>
               <Button
