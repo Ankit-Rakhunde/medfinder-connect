@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Search, MapPin, Phone } from "lucide-react";
 import { motion } from "framer-motion";
 import Navigation from "@/components/Navigation";
@@ -18,11 +18,8 @@ const Index = () => {
     setDebouncedQuery(query);
   };
 
-  // We've removed the auto-detection on mount to give the user more control
-  // Location detection will now only happen when the user clicks the button
-
   const { data: searchResults, isLoading } = useQuery({
-    queryKey: ['medicineSearch', debouncedQuery],
+    queryKey: ['medicineSearch', debouncedQuery, userLocation?.latitude, userLocation?.longitude],
     queryFn: async () => {
       if (!debouncedQuery) return [];
       
@@ -43,11 +40,9 @@ const Index = () => {
         `)
         .ilike('name', `%${debouncedQuery}%`);
 
-      if (error) throw error;
-
-      if (data && userLocation?.latitude && userLocation?.longitude) {
-        // Sorting by distance is now handled in the SearchResults component
-        return data;
+      if (error) {
+        console.error("Search error:", error);
+        throw error;
       }
 
       return data || [];

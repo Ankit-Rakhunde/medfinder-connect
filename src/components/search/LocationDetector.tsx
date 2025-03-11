@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { MapPin, Loader2 } from "lucide-react";
+import { MapPin, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { Separator } from "@/components/ui/separator";
@@ -27,6 +27,7 @@ export const LocationDetector = ({
 }: LocationDetectorProps) => {
   const { toast } = useToast();
   const [locationError, setLocationError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   const getCurrentLocation = () => {
     setIsLoadingLocation(true);
@@ -40,83 +41,68 @@ export const LocationDetector = ({
     if ("geolocation" in navigator) {
       const options = {
         enableHighAccuracy: true,
-        timeout: 30000, // Extended timeout
+        timeout: 30000, 
         maximumAge: 0
       };
 
       navigator.geolocation.getCurrentPosition(
         async (position) => {
           const { latitude, longitude } = position.coords;
+          console.log("Raw coordinates:", latitude, longitude);
+          
           try {
-            console.log("Raw coordinates:", latitude, longitude);
+            // Try OpenStreetMap's Nominatim API with more specific headers
+            const nominatimUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1&zoom=18&accept-language=en`;
             
-            // Try using multiple geocoding services for better results
-            let locationFound = false;
+            const response = await fetch(nominatimUrl, { 
+              headers: { 
+                "Accept-Language": "en",
+                "User-Agent": "MedFinder/1.0" 
+              } 
+            });
             
-            // First attempt with OpenStreetMap's Nominatim API
-            try {
-              const response = await fetch(
-                `https://nominatim.openstreetmap.org/reverse?` +
-                `format=json&lat=${latitude}&lon=${longitude}&` +
-                `addressdetails=1&zoom=18&accept-language=en`,
-                { 
-                  headers: { 
-                    "Accept-Language": "en",
-                    "User-Agent": "MedFinder/1.0" 
-                  } 
-                }
-              );
-              
-              if (!response.ok) {
-                throw new Error('Failed to fetch location details from Nominatim');
-              }
+            if (!response.ok) {
+              throw new Error('Failed to fetch location details from Nominatim');
+            }
 
-              const data = await response.json();
-              console.log("Location data from Nominatim API:", data);
-              
-              // Extract meaningful location data
-              let area = '';
-              if (data.address) {
-                area = data.address.suburb || 
-                      data.address.neighbourhood || 
-                      data.address.residential || 
-                      data.address.village ||
-                      data.address.town ||
-                      data.address.city_district ||
-                      data.address.city ||
-                      data.address.county ||
-                      "Unknown Area";
+            const data = await response.json();
+            console.log("Location data from Nominatim API:", data);
+            
+            if (data && data.address) {
+              // Extract meaningful location data with more fallbacks
+              const area = data.address.suburb || 
+                    data.address.neighbourhood || 
+                    data.address.residential || 
+                    data.address.village ||
+                    data.address.town ||
+                    data.address.city_district ||
+                    data.address.city ||
+                    data.address.county ||
+                    data.display_name?.split(',')[0] ||
+                    "Unknown Area";
                       
-                const pincode = data.address.postcode || "Unknown Pincode";
+              const pincode = data.address.postcode || "Unknown Pincode";
 
-                setUserLocation({
-                  area,
-                  pincode,
-                  latitude,
-                  longitude
-                });
+              setUserLocation({
+                area,
+                pincode,
+                latitude,
+                longitude
+              });
 
-                toast({
-                  title: "Location detected",
-                  description: `${area}, ${pincode}`,
-                });
-                
-                locationFound = true;
-              }
-            } catch (nominatimError) {
-              console.error("Error with Nominatim API:", nominatimError);
-              // Will continue to fallback options
+              toast({
+                title: "Location detected",
+                description: `${area}, ${pincode}`,
+              });
+              
+              setRetryCount(0); // Reset retry count on success
+            } else {
+              throw new Error('Invalid location data structure');
             }
-            
-            // If location still not found, use raw coordinates
-            if (!locationFound) {
-              throw new Error('Could not determine precise location from APIs');
-            }
-            
           } catch (error) {
             console.error("Error getting location details:", error);
             
-            // Set a generic location as fallback
+            // Fallback to using raw coordinates
             setUserLocation({
               area: "Unknown Area",
               pincode: "Unknown Pincode",
@@ -124,12 +110,12 @@ export const LocationDetector = ({
               longitude: longitude
             });
             
-            setLocationError("Could not get your precise location. Using coordinates only.");
+            setLocationError("Could not get your precise location details. Using coordinates only.");
             
             toast({
               variant: "destructive",
               title: "Error getting detailed location",
-              description: "Using coordinates for search. Please try again later.",
+              description: "Using coordinates for search. You can retry for better results.",
             });
           } finally {
             setIsLoadingLocation(false);
@@ -143,13 +129,13 @@ export const LocationDetector = ({
           
           switch(error.code) {
             case error.PERMISSION_DENIED:
-              errorMessage = "Please enable location services in your browser";
+              errorMessage = "Please enable location services in your browser settings";
               break;
             case error.POSITION_UNAVAILABLE:
-              errorMessage = "Location information is unavailable";
+              errorMessage = "Location information is unavailable. Please try again";
               break;
             case error.TIMEOUT:
-              errorMessage = "Location request timed out";
+              errorMessage = "Location request timed out. Please try again";
               break;
           }
 
@@ -160,6 +146,9 @@ export const LocationDetector = ({
             title: "Error getting location",
             description: errorMessage,
           });
+
+          // Increment retry count
+          setRetryCount(prevCount => prevCount + 1);
         },
         options
       );
@@ -184,7 +173,7 @@ export const LocationDetector = ({
         </div>
         
         {locationError && (
-          <p className="text-sm text-red-500">{locationError}</p>
+          <p className="text-sm text-red-500 bg-red-50 p-2 rounded">{locationError}</p>
         )}
         
         {isLoadingLocation ? (
@@ -211,7 +200,8 @@ export const LocationDetector = ({
                 className="text-medical-600 hover:text-medical-700"
                 disabled={isLoadingLocation}
               >
-                Update
+                <RefreshCw size={14} className="mr-1" />
+                Refresh
               </Button>
             </div>
           </div>
@@ -228,6 +218,11 @@ export const LocationDetector = ({
               <MapPin size={16} className="mr-2" />
               Detect My Location
             </Button>
+            {retryCount > 0 && (
+              <p className="text-xs text-amber-600 mt-1">
+                Having trouble? Make sure you've granted location permissions and try refreshing the page.
+              </p>
+            )}
           </div>
         )}
       </div>
