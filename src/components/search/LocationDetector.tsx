@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { MapPin, Loader2, RefreshCw } from "lucide-react";
+import { MapPin, Loader2, RefreshCw, CheckCircle, MapIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { Separator } from "@/components/ui/separator";
@@ -184,20 +184,24 @@ export const LocationDetector = ({
         ) : userLocation ? (
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium">{userLocation.area}</p>
-                <p className="text-xs text-gray-500">{userLocation.pincode}</p>
-                {userLocation.latitude && userLocation.longitude && (
-                  <p className="text-xs text-gray-400 mt-1">
-                    Coordinates: {userLocation.latitude.toFixed(6)}, {userLocation.longitude.toFixed(6)}
-                  </p>
-                )}
+              <div className="flex flex-col">
+                <div className="bg-medical-50 rounded-md p-3 mb-2 inline-flex items-center gap-2">
+                  <CheckCircle size={16} className="text-medical-600" />
+                  <span className="text-sm font-medium text-medical-900">Location Detected</span>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-2">
+                    <MapIcon size={14} className="text-medical-600" />
+                    <p className="text-sm font-semibold">{userLocation.area}</p>
+                  </div>
+                  <p className="text-xs text-gray-500 ml-6">{userLocation.pincode}</p>
+                </div>
               </div>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={getCurrentLocation}
-                className="text-medical-600 hover:text-medical-700"
+                className="text-medical-600 hover:text-medical-700 hover:bg-medical-50 transition-colors"
                 disabled={isLoadingLocation}
               >
                 <RefreshCw size={14} className="mr-1" />
