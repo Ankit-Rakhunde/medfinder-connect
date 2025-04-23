@@ -1,7 +1,7 @@
 
 import React from "react";
 import { MapPin } from "lucide-react";
-import { useLocationDetection } from "@/hooks/useLocationDetection";
+import { useLocationDetection, LocationDetails } from "@/hooks/useLocationDetection";
 import { LocationError } from "./LocationError";
 import { LocationDisplay } from "./LocationDisplay";
 import { LocationButton } from "./LocationButton";
