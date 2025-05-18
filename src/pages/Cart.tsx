@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import Navigation from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
@@ -39,38 +38,13 @@ const Cart = () => {
     };
 
     loadCartItems();
+    
+    // Clear the cart to remove all "Add to Cart" functionality
+    localStorage.removeItem('cart');
   }, []);
 
   // Calculate total price
   const totalPrice = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-
-  // Update cart in localStorage
-  const updateCart = (newCartItems: CartItem[]) => {
-    setCartItems(newCartItems);
-    localStorage.setItem('cart', JSON.stringify(newCartItems));
-  };
-
-  // Update item quantity
-  const updateQuantity = (id: string, change: number) => {
-    const updatedCart = cartItems.map(item => {
-      if (item.id === id) {
-        const newQuantity = item.quantity + change;
-        return newQuantity > 0 ? { ...item, quantity: newQuantity } : item;
-      }
-      return item;
-    });
-    updateCart(updatedCart);
-  };
-
-  // Remove item from cart
-  const removeItem = (id: string) => {
-    const updatedCart = cartItems.filter(item => item.id !== id);
-    updateCart(updatedCart);
-    toast({
-      title: "Item removed",
-      description: "Item has been removed from your cart",
-    });
-  };
 
   // Place order
   const placeOrder = () => {
@@ -85,7 +59,8 @@ const Cart = () => {
 
     // Here you would typically send the order to a backend
     // For now, we'll just clear the cart and show a success message
-    updateCart([]);
+    setCartItems([]);
+    localStorage.removeItem('cart');
     toast({
       title: "Order placed successfully!",
       description: "Thank you for your order. It has been received and is being processed.",
@@ -125,13 +100,14 @@ const Cart = () => {
               <ShoppingCart size={48} className="mx-auto mb-4 text-gray-400" />
               <h2 className="text-xl font-semibold mb-2">Your cart is empty</h2>
               <p className="text-gray-600 mb-6">
-                Looks like you haven't added any medicines to your cart yet.
+                The Add to Cart functionality has been removed from this application.
               </p>
               <Button asChild>
-                <a href="/#search-section">Start Shopping</a>
+                <a href="/#search-section">Browse Medicines</a>
               </Button>
             </div>
           ) : (
+            
             <div className="space-y-6">
               {Object.entries(itemsByShop).map(([shopName, items]) => (
                 <div key={shopName} className="bg-white rounded-lg shadow overflow-hidden">
@@ -145,32 +121,6 @@ const Cart = () => {
                           <h3 className="font-medium">{item.name}</h3>
                           <p className="text-medical-600 font-medium mt-1">₹{item.price.toFixed(2)}</p>
                         </div>
-                        
-                        <div className="flex items-center gap-3">
-                          <div className="flex items-center border rounded-md">
-                            <button 
-                              onClick={() => updateQuantity(item.id, -1)}
-                              disabled={item.quantity <= 1}
-                              className="px-2 py-1 text-gray-500 disabled:opacity-30"
-                            >
-                              <Minus size={16} />
-                            </button>
-                            <span className="px-3 py-1">{item.quantity}</span>
-                            <button 
-                              onClick={() => updateQuantity(item.id, 1)}
-                              className="px-2 py-1 text-gray-500"
-                            >
-                              <Plus size={16} />
-                            </button>
-                          </div>
-                          
-                          <button 
-                            onClick={() => removeItem(item.id)}
-                            className="text-red-500 hover:text-red-700"
-                          >
-                            <Trash2 size={18} />
-                          </button>
-                        </div>
                       </div>
                     ))}
                   </div>
@@ -182,13 +132,6 @@ const Cart = () => {
                   <span className="text-lg font-semibold">Total</span>
                   <span className="text-xl font-bold text-medical-700">₹{totalPrice.toFixed(2)}</span>
                 </div>
-                
-                <Button 
-                  className="w-full bg-medical-600 hover:bg-medical-700"
-                  onClick={placeOrder}
-                >
-                  Place Order
-                </Button>
               </div>
             </div>
           )}
