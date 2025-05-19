@@ -8,7 +8,6 @@ import Doctors from "./pages/Doctors";
 import AddShop from "./pages/AddShop";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
-import Cart from "./pages/Cart";
 import { Toaster } from "./components/ui/toaster";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "./contexts/AuthContext";
@@ -26,7 +25,6 @@ function App() {
             <Route path="/stores" element={<Stores />} />
             <Route path="/doctors" element={<Doctors />} />
             <Route path="/auth" element={<Auth />} />
-            <Route path="/cart" element={<Cart />} />
             <Route 
               path="/add-shop" 
               element={
