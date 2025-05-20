@@ -107,12 +107,55 @@ export type Database = {
         }
         Relationships: []
       }
+      users: {
+        Row: {
+          created_at: string | null
+          email: string
+          first_name: string | null
+          id: string
+          last_name: string | null
+          password: string
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          password: string
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          password?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      authenticate_user: {
+        Args: { email_input: string; password_input: string }
+        Returns: Json
+      }
+      hash_password: {
+        Args: { password: string }
+        Returns: string
+      }
+      register_user: {
+        Args: {
+          email_input: string
+          password_input: string
+          first_name_input?: string
+          last_name_input?: string
+        }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never
