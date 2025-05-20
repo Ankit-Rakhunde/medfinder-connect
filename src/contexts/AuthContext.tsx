@@ -1,63 +1,141 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Session, User } from "@supabase/supabase-js";
+import { User } from "@supabase/supabase-js";
+
+interface AuthUser {
+  id: string;
+  email: string;
+  first_name: string | null;
+  last_name: string | null;
+}
 
 interface AuthContextType {
-  session: Session | null;
-  user: User | null;
+  user: AuthUser | null;
   loading: boolean;
+  signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string, firstName: string, lastName: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
-  resendVerificationEmail: (email: string) => Promise<{ error: Error | null }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [session, setSession] = useState<Session | null>(null);
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Get session on initial load
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
+    // Check for stored user on initial load
+    const storedUser = localStorage.getItem("auth_user");
+    if (storedUser) {
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch (err) {
+        console.error("Error parsing stored user:", err);
+        localStorage.removeItem("auth_user");
+      }
+    }
+    setLoading(false);
+
+    // Listen for auth state changes
+    window.addEventListener("auth_state_change", () => {
+      const currentUser = localStorage.getItem("auth_user");
+      if (currentUser) {
+        try {
+          setUser(JSON.parse(currentUser));
+        } catch (err) {
+          console.error("Error parsing stored user:", err);
+        }
+      } else {
+        setUser(null);
+      }
     });
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
-      }
-    );
-
     return () => {
-      subscription.unsubscribe();
+      window.removeEventListener("auth_state_change", () => {});
     };
   }, []);
 
-  const signOut = async () => {
-    await supabase.auth.signOut();
+  const signIn = async (email: string, password: string) => {
+    try {
+      const { data, error } = await supabase.rpc('authenticate_user', {
+        email_input: email,
+        password_input: password
+      });
+
+      if (error) throw error;
+      if (!data) throw new Error("Authentication failed");
+
+      const userData = {
+        id: data.id,
+        email: data.email,
+        first_name: data.first_name,
+        last_name: data.last_name
+      };
+
+      // Store user in localStorage
+      localStorage.setItem("auth_user", JSON.stringify(userData));
+      setUser(userData);
+
+      // Dispatch event to update auth state
+      window.dispatchEvent(new Event("auth_state_change"));
+      
+      return { error: null };
+    } catch (error: any) {
+      console.error("Error signing in:", error);
+      return { error };
+    }
   };
 
-  const resendVerificationEmail = async (email: string) => {
-    const { error } = await supabase.auth.resend({
-      type: 'signup',
-      email,
-    });
-    return { error };
+  const signUp = async (email: string, password: string, firstName: string, lastName: string) => {
+    try {
+      const { data, error } = await supabase.rpc('register_user', {
+        email_input: email,
+        password_input: password,
+        first_name_input: firstName,
+        last_name_input: lastName
+      });
+
+      if (error) throw error;
+      
+      // On successful registration, automatically sign in
+      if (data) {
+        const userData = {
+          id: data.id,
+          email: data.email,
+          first_name: data.first_name,
+          last_name: data.last_name
+        };
+
+        localStorage.setItem("auth_user", JSON.stringify(userData));
+        setUser(userData);
+        
+        // Dispatch event to update auth state
+        window.dispatchEvent(new Event("auth_state_change"));
+      }
+      
+      return { error: null };
+    } catch (error: any) {
+      console.error("Error signing up:", error);
+      return { error };
+    }
+  };
+
+  const signOut = async () => {
+    // Remove user from localStorage
+    localStorage.removeItem("auth_user");
+    setUser(null);
+    
+    // Dispatch event to update auth state
+    window.dispatchEvent(new Event("auth_state_change"));
   };
 
   const value = {
-    session,
     user,
     loading,
-    signOut,
-    resendVerificationEmail,
+    signIn,
+    signUp,
+    signOut
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

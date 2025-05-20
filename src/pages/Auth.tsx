@@ -1,7 +1,6 @@
 
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
@@ -10,34 +9,29 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Auth = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { signIn, signUp } = useAuth();
+  
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [emailNotConfirmed, setEmailNotConfirmed] = useState(false);
-  const [resendingEmail, setResendingEmail] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setEmailNotConfirmed(false);
+    setAuthError(null);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      const { error } = await signIn(email, password);
 
       if (error) {
-        if (error.message.includes("Email not confirmed")) {
-          setEmailNotConfirmed(true);
-          throw new Error("Please verify your email before logging in");
-        }
         throw error;
       }
 
@@ -47,6 +41,7 @@ const Auth = () => {
       });
       navigate("/");
     } catch (error: any) {
+      setAuthError(error.message || "An error occurred during login");
       toast({
         variant: "destructive",
         title: "Login failed",
@@ -60,27 +55,22 @@ const Auth = () => {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setAuthError(null);
 
     try {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            first_name: firstName,
-            last_name: lastName,
-          },
-        },
-      });
+      const { error } = await signUp(email, password, firstName, lastName);
 
-      if (error) throw error;
+      if (error) {
+        throw error;
+      }
 
       toast({
         title: "Sign up successful",
-        description: "Welcome to MedFinder! Please check your email to verify your account.",
+        description: "Welcome to MedFinder! Your account has been created.",
       });
-      setEmailNotConfirmed(true);
+      navigate("/");
     } catch (error: any) {
+      setAuthError(error.message || "An error occurred during sign up");
       toast({
         variant: "destructive",
         title: "Sign up failed",
@@ -88,31 +78,6 @@ const Auth = () => {
       });
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleResendVerificationEmail = async () => {
-    setResendingEmail(true);
-    try {
-      const { error } = await supabase.auth.resend({
-        type: 'signup',
-        email,
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "Verification email sent",
-        description: "Please check your inbox for the verification link",
-      });
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Failed to resend verification email",
-        description: error.message || "An error occurred. Please try again.",
-      });
-    } finally {
-      setResendingEmail(false);
     }
   };
 
@@ -130,23 +95,11 @@ const Auth = () => {
               </CardDescription>
             </CardHeader>
 
-            {emailNotConfirmed && (
+            {authError && (
               <div className="px-6">
                 <Alert variant="destructive">
                   <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    Your email is not verified. Please check your inbox for the verification link.
-                    <div className="mt-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleResendVerificationEmail}
-                        disabled={resendingEmail}
-                      >
-                        {resendingEmail ? "Sending..." : "Resend verification email"}
-                      </Button>
-                    </div>
-                  </AlertDescription>
+                  <AlertDescription>{authError}</AlertDescription>
                 </Alert>
               </div>
             )}
