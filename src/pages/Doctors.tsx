@@ -1,10 +1,21 @@
 
 import { useState, useEffect } from "react";
-import { MapPin, Phone, Mail, Clock, Star } from "lucide-react";
+import { MapPin, Phone, Mail, Clock, Star, Calendar } from "lucide-react";
 import Navigation from "@/components/Navigation";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { format } from "date-fns";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import * as z from "zod";
+import { cn } from "@/lib/utils";
 
 interface Doctor {
   id: string;
@@ -26,11 +37,68 @@ interface LocationDetails {
   longitude: number | null;
 }
 
+// Schema for form validation
+const formSchema = z.object({
+  name: z.string().min(2, { message: "Name must be at least 2 characters." }),
+  email: z.string().email({ message: "Please enter a valid email address." }),
+  phone: z.string().min(10, { message: "Please enter a valid phone number." }),
+  date: z.date({ required_error: "Please select a date for your appointment." }),
+  time: z.string({ required_error: "Please select a time slot." }),
+  reason: z.string().min(5, { message: "Please provide a reason for your visit." }).max(200, { message: "Reason must be less than 200 characters." })
+});
+
+type FormValues = z.infer<typeof formSchema>;
+
 const Doctors = () => {
   const { toast } = useToast();
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [userLocation, setUserLocation] = useState<LocationDetails | null>(null);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+  const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
+  const [isBookingOpen, setIsBookingOpen] = useState(false);
+
+  // Initialize the form
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      name: "",
+      email: "",
+      phone: "",
+      reason: ""
+    }
+  });
+
+  // Available time slots
+  const availableTimeSlots = [
+    "09:00 AM", "09:30 AM", "10:00 AM", "10:30 AM", 
+    "11:00 AM", "11:30 AM", "12:00 PM", "12:30 PM",
+    "02:00 PM", "02:30 PM", "03:00 PM", "03:30 PM", 
+    "04:00 PM", "04:30 PM", "05:00 PM"
+  ];
+
+  // Handle form submission
+  const onSubmit = (data: FormValues) => {
+    console.log("Appointment data:", data, "Doctor:", selectedDoctor);
+    
+    // Close the dialog
+    setIsBookingOpen(false);
+    
+    // Reset the form
+    form.reset();
+    
+    // Show success toast
+    toast({
+      title: "Appointment Booked Successfully!",
+      description: `Your appointment with ${selectedDoctor?.name} is scheduled for ${format(data.date, "PPP")} at ${data.time}.`,
+      variant: "default",
+    });
+  };
+
+  // Open booking dialog with selected doctor
+  const handleBookAppointment = (doctor: Doctor) => {
+    setSelectedDoctor(doctor);
+    setIsBookingOpen(true);
+  };
 
   // Sample doctor data
   const sampleDoctors: Doctor[] = [
@@ -379,7 +447,7 @@ const Doctors = () => {
                   </div>
                   
                   <div className="mt-6 flex space-x-2">
-                    <Button className="w-full">Book Appointment</Button>
+                    <Button className="w-full" onClick={() => handleBookAppointment(doctor)}>Book Appointment</Button>
                     <Button variant="outline" className="w-full">Contact</Button>
                   </div>
                 </div>
@@ -394,6 +462,166 @@ const Doctors = () => {
           </div>
         </motion.div>
       </main>
+
+      {/* Appointment Booking Dialog */}
+      <Dialog open={isBookingOpen} onOpenChange={setIsBookingOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Book an Appointment</DialogTitle>
+            <DialogDescription>
+              {selectedDoctor && (
+                <div className="mt-2">
+                  with <span className="font-semibold">{selectedDoctor.name}</span> - {selectedDoctor.specialty}
+                </div>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Your Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="John Doe" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email</FormLabel>
+                      <FormControl>
+                        <Input placeholder="your@email.com" type="email" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="phone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Phone</FormLabel>
+                      <FormControl>
+                        <Input placeholder="+1 (555) 123-4567" type="tel" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="date"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Appointment Date</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant="outline"
+                              className={cn(
+                                "pl-3 text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                              )}
+                            >
+                              {field.value ? (
+                                format(field.value, "PPP")
+                              ) : (
+                                <span>Pick a date</span>
+                              )}
+                              <Calendar className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <CalendarComponent
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            disabled={(date) => 
+                              date < new Date() || date > new Date(new Date().setMonth(new Date().getMonth() + 3))
+                            }
+                            initialFocus
+                            className="pointer-events-auto"
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="time"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Preferred Time</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a time slot" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {availableTimeSlots.map((time) => (
+                            <SelectItem key={time} value={time}>
+                              {time}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              
+              <FormField
+                control={form.control}
+                name="reason"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Reason for Visit</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Brief description of your symptoms or reason for appointment"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <DialogFooter className="mt-6">
+                <Button type="button" variant="outline" onClick={() => setIsBookingOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit">
+                  Confirm Booking
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
