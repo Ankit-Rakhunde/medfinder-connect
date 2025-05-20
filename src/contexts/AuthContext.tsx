@@ -10,6 +10,14 @@ interface AuthUser {
   last_name: string | null;
 }
 
+// Define the type for the response from the authenticate_user and register_user functions
+interface AuthResponse {
+  id: string;
+  email: string;
+  first_name: string | null;
+  last_name: string | null;
+}
+
 interface AuthContextType {
   user: AuthUser | null;
   loading: boolean;
@@ -58,7 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     try {
-      const { data, error } = await supabase.rpc('authenticate_user', {
+      const { data, error } = await supabase.rpc<AuthResponse>('authenticate_user', {
         email_input: email,
         password_input: password
       });
@@ -89,7 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUp = async (email: string, password: string, firstName: string, lastName: string) => {
     try {
-      const { data, error } = await supabase.rpc('register_user', {
+      const { data, error } = await supabase.rpc<AuthResponse>('register_user', {
         email_input: email,
         password_input: password,
         first_name_input: firstName,
