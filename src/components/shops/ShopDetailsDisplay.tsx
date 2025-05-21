@@ -1,19 +1,25 @@
 
-import { MapPin, ExternalLink, Phone } from "lucide-react";
+import { MapPin, ExternalLink, Phone, Pills } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface ShopDetailsDisplayProps {
   shopData: {
+    id: string;
     name: string;
     address: string;
     phone: string;
     maps_link: string;
     latitude: number | null;
     longitude: number | null;
+    user_id: string | null;
   };
 }
 
 const ShopDetailsDisplay = ({ shopData }: ShopDetailsDisplayProps) => {
+  const { user } = useAuth();
+  
   // Generate a Google Maps link if we have coordinates but no explicit maps_link
   const getGoogleMapsLink = () => {
     if (shopData.maps_link) return shopData.maps_link;
@@ -26,6 +32,7 @@ const ShopDetailsDisplay = ({ shopData }: ShopDetailsDisplayProps) => {
   };
 
   const mapsLink = getGoogleMapsLink();
+  const isShopOwner = user && user.id === shopData.user_id;
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-sm border">
@@ -43,8 +50,8 @@ const ShopDetailsDisplay = ({ shopData }: ShopDetailsDisplayProps) => {
             </a>
           </p>
         )}
-        {mapsLink && (
-          <div className="mt-4">
+        <div className="mt-4 flex flex-wrap gap-2">
+          {mapsLink && (
             <Button variant="outline" size="sm" className="flex items-center gap-2" asChild>
               <a 
                 href={mapsLink} 
@@ -57,8 +64,17 @@ const ShopDetailsDisplay = ({ shopData }: ShopDetailsDisplayProps) => {
                 <ExternalLink size={14} />
               </a>
             </Button>
-          </div>
-        )}
+          )}
+          
+          {isShopOwner && (
+            <Button variant="outline" size="sm" className="flex items-center gap-2" asChild>
+              <Link to={`/shop-inventory/${shopData.id}`} className="text-green-600">
+                <Pills size={16} />
+                View Inventory
+              </Link>
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );

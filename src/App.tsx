@@ -8,6 +8,7 @@ import Doctors from "./pages/Doctors";
 import AddShop from "./pages/AddShop";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import ShopInventory from "./pages/ShopInventory";
 import { Toaster } from "./components/ui/toaster";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "./contexts/AuthContext";
@@ -30,6 +31,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <AddShop />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/shop-inventory/:shopId" 
+              element={
+                <ProtectedRoute>
+                  <ShopInventory />
                 </ProtectedRoute>
               } 
             />

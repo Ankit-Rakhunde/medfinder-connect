@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import ShopDetailsDisplay from "@/components/shops/ShopDetailsDisplay";
 
 const Stores = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -42,17 +43,6 @@ const Stores = () => {
       setFilteredStores(filtered);
     }
   }, [stores, searchTerm]);
-
-  // Generate a Google Maps link if we have coordinates but no explicit maps_link
-  const getGoogleMapsLink = (shop: any) => {
-    if (shop.maps_link) return shop.maps_link;
-    
-    if (shop.latitude && shop.longitude) {
-      return `https://www.google.com/maps?q=${shop.latitude},${shop.longitude}`;
-    }
-    
-    return null;
-  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -131,101 +121,29 @@ const Stores = () => {
           </div>
         ) : viewMode === "grid" ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredStores.map((store) => {
-              const mapsLink = getGoogleMapsLink(store);
-              return (
-                <Card key={store.id} className="overflow-hidden hover:shadow-md transition-shadow">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-xl flex justify-between items-start">
-                      <span>{store.name}</span>
-                    </CardTitle>
-                    {store.description && (
-                      <CardDescription>{store.description}</CardDescription>
-                    )}
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="flex items-start gap-2">
-                      <MapPin size={18} className="text-gray-500 shrink-0 mt-1" />
-                      <span className="text-gray-700">{store.address}</span>
-                    </div>
-                    {store.phone && (
-                      <div className="flex items-center gap-2">
-                        <Phone size={18} className="text-gray-500" />
-                        <a href={`tel:${store.phone}`} className="text-gray-700 hover:text-medical-600 transition-colors">
-                          {store.phone}
-                        </a>
-                      </div>
-                    )}
-                  </CardContent>
-                  <CardFooter className="border-t pt-4">
-                    {mapsLink ? (
-                      <Button variant="outline" size="sm" asChild className="text-blue-600 ml-auto">
-                        <a 
-                          href={mapsLink} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1"
-                        >
-                          <MapPin size={14} />
-                          <span>View on Maps</span>
-                          <ExternalLink size={12} />
-                        </a>
-                      </Button>
-                    ) : (
-                      <span className="text-sm text-gray-500 ml-auto">No map available</span>
-                    )}
-                  </CardFooter>
-                </Card>
-              );
-            })}
+            {filteredStores.map((store) => (
+              <Card key={store.id} className="overflow-hidden hover:shadow-md transition-shadow">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-xl flex justify-between items-start">
+                    <span>{store.name}</span>
+                  </CardTitle>
+                  {store.description && (
+                    <CardDescription>{store.description}</CardDescription>
+                  )}
+                </CardHeader>
+                <CardContent>
+                  <ShopDetailsDisplay shopData={store} />
+                </CardContent>
+              </Card>
+            ))}
           </div>
         ) : (
           <div className="space-y-4">
-            {filteredStores.map((store) => {
-              const mapsLink = getGoogleMapsLink(store);
-              return (
-                <div key={store.id} className="bg-white p-4 rounded-lg border shadow-sm flex flex-col md:flex-row gap-4 hover:shadow-md transition-shadow">
-                  <div className="flex-1">
-                    <h3 className="text-lg font-medium text-gray-900">{store.name}</h3>
-                    {store.description && (
-                      <p className="text-gray-600 text-sm mt-1">{store.description}</p>
-                    )}
-                    <div className="mt-3 space-y-2">
-                      <div className="flex items-start gap-2">
-                        <MapPin size={18} className="text-gray-500 shrink-0 mt-1" />
-                        <span className="text-gray-700">{store.address}</span>
-                      </div>
-                      {store.phone && (
-                        <div className="flex items-center gap-2">
-                          <Phone size={18} className="text-gray-500" />
-                          <a href={`tel:${store.phone}`} className="text-gray-700 hover:text-medical-600 transition-colors">
-                            {store.phone}
-                          </a>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  {mapsLink ? (
-                    <div className="flex items-center">
-                      <Button variant="outline" size="sm" asChild className="text-blue-600">
-                        <a 
-                          href={mapsLink} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1"
-                        >
-                          <MapPin size={14} />
-                          <span>Maps</span>
-                          <ExternalLink size={12} />
-                        </a>
-                      </Button>
-                    </div>
-                  ) : (
-                    <span className="text-sm text-gray-500">No map available</span>
-                  )}
-                </div>
-              );
-            })}
+            {filteredStores.map((store) => (
+              <div key={store.id} className="bg-white p-4 rounded-lg border shadow-sm hover:shadow-md transition-shadow">
+                <ShopDetailsDisplay shopData={store} />
+              </div>
+            ))}
           </div>
         )}
       </div>
