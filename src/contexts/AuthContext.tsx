@@ -18,6 +18,19 @@ interface AuthResponse {
   last_name: string | null;
 }
 
+// Define the parameter types for the RPC functions
+interface AuthenticateParams {
+  email_input: string;
+  password_input: string;
+}
+
+interface RegisterParams {
+  email_input: string;
+  password_input: string;
+  first_name_input: string;
+  last_name_input: string;
+}
+
 interface AuthContextType {
   user: AuthUser | null;
   loading: boolean;
@@ -66,7 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     try {
-      const { data, error } = await supabase.rpc<AuthResponse>('authenticate_user', {
+      const { data, error } = await supabase.rpc<AuthResponse, AuthenticateParams>('authenticate_user', {
         email_input: email,
         password_input: password
       });
@@ -100,7 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUp = async (email: string, password: string, firstName: string, lastName: string) => {
     try {
-      const { data, error } = await supabase.rpc<AuthResponse>('register_user', {
+      const { data, error } = await supabase.rpc<AuthResponse, RegisterParams>('register_user', {
         email_input: email,
         password_input: password,
         first_name_input: firstName,
