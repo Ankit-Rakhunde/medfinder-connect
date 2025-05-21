@@ -1,7 +1,7 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { User } from "@supabase/supabase-js";
+import { Json } from "@/integrations/supabase/types";
 
 interface AuthUser {
   id: string;
@@ -73,12 +73,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (error) throw error;
       if (!data) throw new Error("Authentication failed");
+      
+      // Cast the data to AuthResponse to ensure type safety
+      const authData = data as unknown as AuthResponse;
 
       const userData = {
-        id: data.id,
-        email: data.email,
-        first_name: data.first_name,
-        last_name: data.last_name
+        id: authData.id,
+        email: authData.email,
+        first_name: authData.first_name,
+        last_name: authData.last_name
       };
 
       // Store user in localStorage
@@ -108,11 +111,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       // On successful registration, automatically sign in
       if (data) {
+        // Cast the data to AuthResponse to ensure type safety
+        const authData = data as unknown as AuthResponse;
+        
         const userData = {
-          id: data.id,
-          email: data.email,
-          first_name: data.first_name,
-          last_name: data.last_name
+          id: authData.id,
+          email: authData.email,
+          first_name: authData.first_name,
+          last_name: authData.last_name
         };
 
         localStorage.setItem("auth_user", JSON.stringify(userData));

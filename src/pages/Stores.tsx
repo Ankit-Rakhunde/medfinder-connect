@@ -1,6 +1,5 @@
 
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { 
   Store, MapPin, Phone, ExternalLink, Filter, 
@@ -14,7 +13,6 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 
 const Stores = () => {
-  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [filteredStores, setFilteredStores] = useState<any[]>([]);
   const [viewMode, setViewMode] = useState<string>("grid");
@@ -159,9 +157,9 @@ const Stores = () => {
                       </div>
                     )}
                   </CardContent>
-                  <CardFooter className="border-t pt-4 flex flex-wrap justify-between gap-2">
+                  <CardFooter className="border-t pt-4">
                     {mapsLink ? (
-                      <Button variant="outline" size="sm" asChild className="text-blue-600">
+                      <Button variant="outline" size="sm" asChild className="text-blue-600 ml-auto">
                         <a 
                           href={mapsLink} 
                           target="_blank" 
@@ -174,16 +172,8 @@ const Stores = () => {
                         </a>
                       </Button>
                     ) : (
-                      <span className="text-sm text-gray-500">No map available</span>
+                      <span className="text-sm text-gray-500 ml-auto">No map available</span>
                     )}
-                    <Button 
-                      variant="default" 
-                      size="sm" 
-                      className="bg-medical-600 hover:bg-medical-700"
-                      onClick={() => navigate(`/stores/${store.id}`)}
-                    >
-                      View Products
-                    </Button>
                   </CardFooter>
                 </Card>
               );
@@ -215,8 +205,8 @@ const Stores = () => {
                       )}
                     </div>
                   </div>
-                  <div className="flex gap-3 items-center justify-end flex-wrap">
-                    {mapsLink ? (
+                  {mapsLink ? (
+                    <div className="flex items-center">
                       <Button variant="outline" size="sm" asChild className="text-blue-600">
                         <a 
                           href={mapsLink} 
@@ -229,18 +219,10 @@ const Stores = () => {
                           <ExternalLink size={12} />
                         </a>
                       </Button>
-                    ) : (
-                      <span className="text-sm text-gray-500">No map available</span>
-                    )}
-                    <Button 
-                      variant="default" 
-                      size="sm" 
-                      className="bg-medical-600 hover:bg-medical-700"
-                      onClick={() => navigate(`/stores/${store.id}`)}
-                    >
-                      View Products
-                    </Button>
-                  </div>
+                    </div>
+                  ) : (
+                    <span className="text-sm text-gray-500">No map available</span>
+                  )}
                 </div>
               );
             })}
