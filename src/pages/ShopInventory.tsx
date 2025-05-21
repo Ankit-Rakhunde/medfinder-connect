@@ -1,8 +1,7 @@
-
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Pills, ArrowLeft, Plus } from "lucide-react";
+import { Pill, ArrowLeft, Plus } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import Navigation from "../components/Navigation";
@@ -194,7 +193,7 @@ const ShopInventory = () => {
         <div className="space-y-6">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-              <Pills className="h-5 w-5" /> 
+              <Pill className="h-5 w-5" /> 
               Medicine Inventory
             </h2>
 
@@ -250,7 +249,7 @@ const ShopInventory = () => {
             </Table>
           ) : (
             <div className="text-center py-12 bg-gray-50 rounded-lg border">
-              <Pills className="mx-auto h-12 w-12 text-gray-400" />
+              <Pill className="mx-auto h-12 w-12 text-gray-400" />
               <h3 className="mt-2 text-lg font-medium text-gray-900">No medicines found</h3>
               <p className="mt-1 text-gray-500">
                 {searchTerm 

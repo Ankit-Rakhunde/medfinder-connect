@@ -1,5 +1,5 @@
 
-import { MapPin, ExternalLink, Phone, Pills } from "lucide-react";
+import { MapPin, ExternalLink, Phone, Pill } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -69,7 +69,7 @@ const ShopDetailsDisplay = ({ shopData }: ShopDetailsDisplayProps) => {
           {isShopOwner && (
             <Button variant="outline" size="sm" className="flex items-center gap-2" asChild>
               <Link to={`/shop-inventory/${shopData.id}`} className="text-green-600">
-                <Pills size={16} />
+                <Pill size={16} />
                 View Inventory
               </Link>
             </Button>
