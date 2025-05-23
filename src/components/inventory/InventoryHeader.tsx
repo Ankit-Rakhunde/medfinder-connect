@@ -7,9 +7,10 @@ import { Link } from "react-router-dom";
 interface InventoryHeaderProps {
   searchTerm: string;
   setSearchTerm: (term: string) => void;
+  shopId?: string;
 }
 
-const InventoryHeader = ({ searchTerm, setSearchTerm }: InventoryHeaderProps) => {
+const InventoryHeader = ({ searchTerm, setSearchTerm, shopId }: InventoryHeaderProps) => {
   return (
     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
       <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
@@ -26,7 +27,7 @@ const InventoryHeader = ({ searchTerm, setSearchTerm }: InventoryHeaderProps) =>
           className="w-full md:w-64"
         />
         <Button asChild>
-          <Link to="/add-shop">
+          <Link to="/add-medicine" state={{ shopId: shopId }}>
             <Plus className="h-4 w-4 mr-1" />
             Add Medicine
           </Link>

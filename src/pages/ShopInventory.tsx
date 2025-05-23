@@ -139,7 +139,7 @@ const ShopInventory = () => {
 
         {/* Inventory section */}
         <div className="space-y-6">
-          <InventoryHeader searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
+          <InventoryHeader searchTerm={searchTerm} setSearchTerm={setSearchTerm} shopId={shopId} />
           <InventoryTable medicines={medicines || []} searchTerm={searchTerm} />
         </div>
       </div>
