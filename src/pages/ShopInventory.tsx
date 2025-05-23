@@ -1,24 +1,23 @@
+
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Pill, ArrowLeft, Plus } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import Navigation from "../components/Navigation";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
 import ShopDetailsDisplay from "@/components/shops/ShopDetailsDisplay";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Input } from "@/components/ui/input";
+import InventoryTable from "@/components/inventory/InventoryTable";
+import InventoryHeader from "@/components/inventory/InventoryHeader";
+import { 
+  InventoryLoading, 
+  InventoryError, 
+  ShopNotFound, 
+  AccessDenied 
+} from "@/components/inventory/InventoryStatus";
 
 interface Medicine {
   id: string;
@@ -84,14 +83,6 @@ const ShopInventory = () => {
     enabled: !!shopId,
   });
 
-  // Filter medicines based on search term
-  const filteredMedicines = medicines?.filter(
-    (medicine) =>
-      medicine.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (medicine.description && 
-        medicine.description.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
-
   // Check if user is the shop owner
   const isShopOwner = shop && user && shop.user_id === user.id;
 
@@ -106,63 +97,20 @@ const ShopInventory = () => {
   }, [shop, user, toast]);
 
   if (shopLoading || medicinesLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <Navigation />
-        <div className="container mx-auto py-16 px-6 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
-        </div>
-      </div>
-    );
+    return <InventoryLoading />;
   }
 
   if (shopError || medicinesError) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <Navigation />
-        <div className="container mx-auto py-16 px-6">
-          <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-md">
-            <h2 className="font-medium">Error</h2>
-            <p>{shopError?.message || medicinesError?.message || "Failed to load data"}</p>
-          </div>
-        </div>
-      </div>
-    );
+    return <InventoryError message={shopError?.message || medicinesError?.message || ""} />;
   }
 
   if (!shop) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <Navigation />
-        <div className="container mx-auto py-16 px-6">
-          <div className="text-center">
-            <h2 className="text-2xl font-bold text-gray-900">Shop Not Found</h2>
-            <p className="mt-2 text-gray-600">The shop you're looking for doesn't exist</p>
-            <Button asChild className="mt-4">
-              <Link to="/stores">Back to Stores</Link>
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
+    return <ShopNotFound />;
   }
 
   // Don't show the inventory if user is not the shop owner
   if (!isShopOwner) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <Navigation />
-        <div className="container mx-auto py-16 px-6">
-          <div className="text-center">
-            <h2 className="text-2xl font-bold text-gray-900">Access Denied</h2>
-            <p className="mt-2 text-gray-600">You don't have permission to view this shop's inventory</p>
-            <Button asChild className="mt-4">
-              <Link to="/stores">Back to Stores</Link>
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
+    return <AccessDenied />;
   }
 
   return (
@@ -191,79 +139,8 @@ const ShopInventory = () => {
 
         {/* Inventory section */}
         <div className="space-y-6">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-              <Pill className="h-5 w-5" /> 
-              Medicine Inventory
-            </h2>
-
-            <div className="flex gap-2 w-full md:w-auto">
-              <Input 
-                type="search" 
-                placeholder="Search medicines..." 
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full md:w-64"
-              />
-              <Button asChild>
-                <Link to="/add-shop">
-                  <Plus className="h-4 w-4 mr-1" />
-                  Add Medicine
-                </Link>
-              </Button>
-            </div>
-          </div>
-
-          {filteredMedicines && filteredMedicines.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Price (₹)</TableHead>
-                  <TableHead>Stock</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredMedicines.map((medicine) => (
-                  <TableRow key={medicine.id}>
-                    <TableCell className="font-medium">{medicine.name}</TableCell>
-                    <TableCell>{medicine.description || "—"}</TableCell>
-                    <TableCell>₹{medicine.price}</TableCell>
-                    <TableCell>
-                      <span 
-                        className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          medicine.stock_quantity > 10
-                            ? "bg-green-100 text-green-800"
-                            : medicine.stock_quantity > 0
-                            ? "bg-yellow-100 text-yellow-800"
-                            : "bg-red-100 text-red-800"
-                        }`}
-                      >
-                        {medicine.stock_quantity}
-                      </span>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          ) : (
-            <div className="text-center py-12 bg-gray-50 rounded-lg border">
-              <Pill className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-lg font-medium text-gray-900">No medicines found</h3>
-              <p className="mt-1 text-gray-500">
-                {searchTerm 
-                  ? "No medicines match your search criteria" 
-                  : "Start adding medicines to your inventory"}
-              </p>
-              <Button asChild className="mt-4">
-                <Link to="/add-shop">
-                  <Plus className="h-4 w-4 mr-1" />
-                  Add Medicine
-                </Link>
-              </Button>
-            </div>
-          )}
+          <InventoryHeader searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
+          <InventoryTable medicines={medicines || []} searchTerm={searchTerm} />
         </div>
       </div>
     </div>
