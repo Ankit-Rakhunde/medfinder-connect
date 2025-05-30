@@ -1,5 +1,5 @@
 
-import { MapPin, ExternalLink, Phone, Pill } from "lucide-react";
+import { MapPin, ExternalLink, Phone, Pill, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -60,19 +60,27 @@ const ShopDetailsDisplay = ({ shopData }: ShopDetailsDisplayProps) => {
                 className="text-blue-600"
               >
                 <MapPin size={16} />
-                View on Google Maps
+                View on Maps
                 <ExternalLink size={14} />
               </a>
             </Button>
           )}
           
           {isShopOwner && (
-            <Button variant="outline" size="sm" className="flex items-center gap-2" asChild>
-              <Link to={`/shop-inventory/${shopData.id}`} className="text-green-600">
-                <Pill size={16} />
-                View Inventory
-              </Link>
-            </Button>
+            <>
+              <Button variant="outline" size="sm" className="flex items-center gap-2" asChild>
+                <Link to={`/shop-inventory/${shopData.id}`} className="text-green-600">
+                  <Pill size={16} />
+                  Manage Inventory
+                </Link>
+              </Button>
+              <Button variant="outline" size="sm" className="flex items-center gap-2" asChild>
+                <Link to="/add-medicine" state={{ shopId: shopData.id }} className="text-purple-600">
+                  <Plus size={16} />
+                  Add Medicine
+                </Link>
+              </Button>
+            </>
           )}
         </div>
       </div>

@@ -86,7 +86,7 @@ const AddShop = () => {
           maps_link: shopData.maps_link,
           latitude: shopData.latitude,
           longitude: shopData.longitude,
-          user_id: user.id, // This should reference auth.users.id
+          user_id: user.id, // This links the shop to the authenticated user
         },
       ]).select();
       
@@ -100,8 +100,8 @@ const AddShop = () => {
       } else if (data && data.length > 0) {
         console.log("Shop created successfully:", data[0]);
         toast({
-          title: "Shop created",
-          description: "Your shop has been created successfully",
+          title: "Shop created successfully",
+          description: "Your shop has been added to the directory",
         });
         navigate("/stores");
       }
