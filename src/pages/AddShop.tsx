@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -41,7 +41,7 @@ const AddShop = () => {
   } = useLocationDetection();
 
   // Update shop coordinates when location is detected
-  useState(() => {
+  useEffect(() => {
     if (userLocation?.latitude && userLocation?.longitude) {
       setShopData(prev => ({
         ...prev,
