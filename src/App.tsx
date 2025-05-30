@@ -6,6 +6,7 @@ import Index from "./pages/Index";
 import Stores from "./pages/Stores";
 import Doctors from "./pages/Doctors";
 import AddShop from "./pages/AddShop";
+import AddMedicine from "./pages/AddMedicine";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import ShopInventory from "./pages/ShopInventory";
@@ -31,6 +32,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <AddShop />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/add-medicine" 
+              element={
+                <ProtectedRoute>
+                  <AddMedicine />
                 </ProtectedRoute>
               } 
             />

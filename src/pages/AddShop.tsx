@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -6,9 +7,9 @@ import Navigation from "../components/Navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { MapPin } from "lucide-react";
+import { useLocationDetection } from "@/hooks/useLocationDetection";
+import ShopDetailsForm from "@/components/shops/ShopDetailsForm";
 
 interface Shop {
   name: string;
@@ -33,15 +34,32 @@ const AddShop = () => {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const {
+    userLocation,
+    isLoadingLocation,
+    getCurrentLocation
+  } = useLocationDetection();
+
+  // Update shop coordinates when location is detected
+  useState(() => {
+    if (userLocation?.latitude && userLocation?.longitude) {
+      setShopData(prev => ({
+        ...prev,
+        latitude: userLocation.latitude,
+        longitude: userLocation.longitude
+      }));
+    }
+  }, [userLocation]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setShopData(prevData => ({
       ...prevData,
-      [name]: value,
+      [name]: name === 'latitude' || name === 'longitude' ? 
+        (value === '' ? null : Number(value)) : value,
     }));
   };
 
-  // Fix the shop type to include all required properties
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -56,7 +74,10 @@ const AddShop = () => {
         return;
       }
       
-      // Create shop with proper structure including user_id
+      console.log("Creating shop with user ID:", user.id);
+      console.log("Shop data:", shopData);
+      
+      // Create shop with proper structure including user_id from auth
       const { data, error } = await supabase.from("shops").insert([
         {
           name: shopData.name,
@@ -65,7 +86,7 @@ const AddShop = () => {
           maps_link: shopData.maps_link,
           latitude: shopData.latitude,
           longitude: shopData.longitude,
-          user_id: user.id, // Add the user_id field
+          user_id: user.id, // This should reference auth.users.id
         },
       ]).select();
       
@@ -77,13 +98,14 @@ const AddShop = () => {
           variant: "destructive",
         });
       } else if (data && data.length > 0) {
+        console.log("Shop created successfully:", data[0]);
         toast({
           title: "Shop created",
           description: "Your shop has been created successfully",
         });
         navigate("/stores");
       }
-    } catch (error : any) {
+    } catch (error: any) {
       console.error("Unexpected error:", error);
       toast({
         title: "Unexpected error",
@@ -103,53 +125,19 @@ const AddShop = () => {
           <h1 className="text-3xl font-bold text-gray-900">Add Your Shop</h1>
           <p className="text-gray-600">List your medical store to reach more customers</p>
         </div>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <Label htmlFor="name">Shop Name</Label>
-            <Input
-              type="text"
-              id="name"
-              name="name"
-              value={shopData.name}
-              onChange={handleChange}
-              placeholder="Enter shop name"
-              required
-            />
-          </div>
-          <div>
-            <Label htmlFor="address">Address</Label>
-            <Input
-              type="text"
-              id="address"
-              name="address"
-              value={shopData.address}
-              onChange={handleChange}
-              placeholder="Enter shop address"
-              required
-            />
-          </div>
-          <div>
-            <Label htmlFor="phone">Phone Number</Label>
-            <Input
-              type="tel"
-              id="phone"
-              name="phone"
-              value={shopData.phone}
-              onChange={handleChange}
-              placeholder="Enter phone number"
-            />
-          </div>
-          <div>
-            <Label htmlFor="maps_link">Google Maps Link</Label>
-            <Input
-              type="url"
-              id="maps_link"
-              name="maps_link"
-              value={shopData.maps_link}
-              onChange={handleChange}
-              placeholder="Enter Google Maps link"
-            />
-          </div>
+        
+        <form onSubmit={handleSubmit} className="max-w-2xl mx-auto space-y-6">
+          <ShopDetailsForm
+            shopData={shopData}
+            setShopData={setShopData}
+            locationDetails={{
+              area: userLocation?.area || "",
+              pincode: userLocation?.pincode || ""
+            }}
+            locationLoading={isLoadingLocation}
+            getCurrentLocation={getCurrentLocation}
+          />
+          
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="latitude">Latitude</Label>
@@ -158,7 +146,7 @@ const AddShop = () => {
                 id="latitude"
                 name="latitude"
                 value={shopData.latitude || ""}
-                onChange={handleChange as any}
+                onChange={handleChange}
                 placeholder="Enter latitude"
                 step="any"
               />
@@ -170,13 +158,14 @@ const AddShop = () => {
                 id="longitude"
                 name="longitude"
                 value={shopData.longitude || ""}
-                onChange={handleChange as any}
+                onChange={handleChange}
                 placeholder="Enter longitude"
                 step="any"
               />
             </div>
           </div>
-          <Button type="submit" disabled={isSubmitting}>
+          
+          <Button type="submit" disabled={isSubmitting} className="w-full">
             {isSubmitting ? (
               <>
                 Adding Shop...
