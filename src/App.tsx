@@ -8,6 +8,7 @@ import Doctors from "./pages/Doctors";
 import AddShop from "./pages/AddShop";
 import AddMedicine from "./pages/AddMedicine";
 import Auth from "./pages/Auth";
+import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 import ShopInventory from "./pages/ShopInventory";
 import { Toaster } from "./components/ui/toaster";
@@ -27,6 +28,7 @@ function App() {
             <Route path="/stores" element={<Stores />} />
             <Route path="/doctors" element={<Doctors />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/admin" element={<Admin />} />
             <Route 
               path="/add-shop" 
               element={

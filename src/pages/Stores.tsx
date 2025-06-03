@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { 
   Store, MapPin, Phone, ExternalLink, Filter, 
-  Layers, GripVertical, Plus
+  Layers, GripVertical, Plus, Shield
 } from "lucide-react";
 import Navigation from "../components/Navigation";
 import { supabase } from "../integrations/supabase/client";
@@ -13,10 +13,11 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/contexts/AuthContext";
 import ShopDetailsDisplay from "@/components/shops/ShopDetailsDisplay";
+import QuickAddMedicine from "@/components/shops/QuickAddMedicine";
 import { Link } from "react-router-dom";
 
 const Stores = () => {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [filteredStores, setFilteredStores] = useState<any[]>([]);
   const [viewMode, setViewMode] = useState<string>("grid");
@@ -67,6 +68,18 @@ const Stores = () => {
       <Navigation />
       
       <div className="container mx-auto py-8 px-6 mt-16">
+        {/* Admin Access Button */}
+        {isAdmin() && (
+          <div className="mb-6">
+            <Button asChild variant="outline" className="flex items-center gap-2 border-orange-200 bg-orange-50">
+              <Link to="/admin">
+                <Shield className="h-4 w-4 text-orange-600" />
+                <span className="text-orange-600">Admin Dashboard</span>
+              </Link>
+            </Button>
+          </div>
+        )}
+
         {/* User's Shops Section - Only show if user is logged in and has shops */}
         {user && userShops && userShops.length > 0 && (
           <>
@@ -80,6 +93,9 @@ const Stores = () => {
                   </Link>
                 </Button>
               </div>
+
+              {/* Quick Add Medicine Component */}
+              <QuickAddMedicine />
               
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {userShops.map((shop) => (

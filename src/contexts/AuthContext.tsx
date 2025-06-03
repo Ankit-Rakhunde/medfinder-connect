@@ -8,6 +8,7 @@ interface AuthUser {
   email: string;
   first_name: string | null;
   last_name: string | null;
+  role: string | null;
 }
 
 // Define the type for the response from the authenticate_user and register_user functions
@@ -16,6 +17,7 @@ interface AuthResponse {
   email: string;
   first_name: string | null;
   last_name: string | null;
+  role: string | null;
 }
 
 // Define the parameter types for the RPC functions
@@ -37,6 +39,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, firstName: string, lastName: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
+  isAdmin: () => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -94,7 +97,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         id: authData.id,
         email: authData.email,
         first_name: authData.first_name,
-        last_name: authData.last_name
+        last_name: authData.last_name,
+        role: authData.role
       };
 
       // Store user in localStorage
@@ -131,7 +135,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           id: authData.id,
           email: authData.email,
           first_name: authData.first_name,
-          last_name: authData.last_name
+          last_name: authData.last_name,
+          role: authData.role
         };
 
         localStorage.setItem("auth_user", JSON.stringify(userData));
@@ -157,12 +162,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.dispatchEvent(new Event("auth_state_change"));
   };
 
+  const isAdmin = () => {
+    return user?.role === 'admin';
+  };
+
   const value = {
     user,
     loading,
     signIn,
     signUp,
-    signOut
+    signOut,
+    isAdmin
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

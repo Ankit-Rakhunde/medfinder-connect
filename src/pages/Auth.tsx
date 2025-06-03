@@ -14,7 +14,7 @@ import { useAuth } from "@/contexts/AuthContext";
 const Auth = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, isAdmin } = useAuth();
   
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
@@ -39,7 +39,13 @@ const Auth = () => {
         title: "Login successful",
         description: "Welcome back!",
       });
-      navigate("/");
+
+      // Redirect based on role
+      if (isAdmin()) {
+        navigate("/admin");
+      } else {
+        navigate("/stores");
+      }
     } catch (error: any) {
       setAuthError(error.message || "An error occurred during login");
       toast({
@@ -68,7 +74,7 @@ const Auth = () => {
         title: "Sign up successful",
         description: "Welcome to MedFinder! Your account has been created.",
       });
-      navigate("/");
+      navigate("/stores");
     } catch (error: any) {
       setAuthError(error.message || "An error occurred during sign up");
       toast({

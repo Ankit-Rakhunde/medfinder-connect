@@ -1,8 +1,11 @@
 
-import { MapPin, ExternalLink, Phone, Pill, Plus } from "lucide-react";
+import { MapPin, ExternalLink, Phone, Pill, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface ShopDetailsDisplayProps {
   shopData: {
@@ -18,7 +21,9 @@ interface ShopDetailsDisplayProps {
 }
 
 const ShopDetailsDisplay = ({ shopData }: ShopDetailsDisplayProps) => {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   
   // Generate a Google Maps link if we have coordinates but no explicit maps_link
   const getGoogleMapsLink = () => {
@@ -33,6 +38,35 @@ const ShopDetailsDisplay = ({ shopData }: ShopDetailsDisplayProps) => {
 
   const mapsLink = getGoogleMapsLink();
   const isShopOwner = user && user.id === shopData.user_id;
+
+  // Delete shop mutation for admin
+  const deleteShopMutation = useMutation({
+    mutationFn: async (shopId: string) => {
+      const { error } = await supabase.from("shops").delete().eq("id", shopId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["stores"] });
+      queryClient.invalidateQueries({ queryKey: ["userShops"] });
+      toast({
+        title: "Shop deleted",
+        description: "Shop has been removed from the system",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error deleting shop",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleDeleteShop = () => {
+    if (confirm("Are you sure you want to delete this shop? This will also delete all associated medicines.")) {
+      deleteShopMutation.mutate(shopData.id);
+    }
+  };
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-sm border">
@@ -81,6 +115,19 @@ const ShopDetailsDisplay = ({ shopData }: ShopDetailsDisplayProps) => {
                 </Link>
               </Button>
             </>
+          )}
+
+          {isAdmin() && (
+            <Button 
+              variant="destructive" 
+              size="sm" 
+              className="flex items-center gap-2"
+              onClick={handleDeleteShop}
+              disabled={deleteShopMutation.isPending}
+            >
+              <Trash2 size={16} />
+              Delete Shop
+            </Button>
           )}
         </div>
       </div>

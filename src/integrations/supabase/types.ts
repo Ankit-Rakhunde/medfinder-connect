@@ -115,6 +115,7 @@ export type Database = {
           id: string
           last_name: string | null
           password: string
+          role: string | null
         }
         Insert: {
           created_at?: string | null
@@ -123,6 +124,7 @@ export type Database = {
           id?: string
           last_name?: string | null
           password: string
+          role?: string | null
         }
         Update: {
           created_at?: string | null
@@ -131,6 +133,7 @@ export type Database = {
           id?: string
           last_name?: string | null
           password?: string
+          role?: string | null
         }
         Relationships: []
       }
@@ -141,6 +144,15 @@ export type Database = {
     Functions: {
       authenticate_user: {
         Args: { email_input: string; password_input: string }
+        Returns: Json
+      }
+      create_admin_user: {
+        Args: {
+          email_input: string
+          password_input: string
+          first_name_input?: string
+          last_name_input?: string
+        }
         Returns: Json
       }
       hash_password: {
