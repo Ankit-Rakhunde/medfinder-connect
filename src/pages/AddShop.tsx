@@ -77,38 +77,8 @@ const AddShop = () => {
       console.log("Creating shop with user ID:", user.id);
       console.log("Shop data:", shopData);
       
-      // First, ensure the user exists in the users table
-      const { data: existingUser, error: userCheckError } = await supabase
-        .from("users")
-        .select("id")
-        .eq("id", user.id)
-        .single();
-
-      if (userCheckError && userCheckError.code === 'PGRST116') {
-        // User doesn't exist in users table, create them
-        console.log("User not found in users table, creating user record");
-        const { error: userCreateError } = await supabase
-          .from("users")
-          .insert([{
-            id: user.id,
-            email: user.email,
-            first_name: user.first_name,
-            last_name: user.last_name,
-            role: user.role || 'user'
-          }]);
-
-        if (userCreateError) {
-          console.error("Error creating user record:", userCreateError);
-          toast({
-            title: "Error creating user record",
-            description: userCreateError.message,
-            variant: "destructive",
-          });
-          return;
-        }
-      }
-      
-      // Create shop with proper structure including user_id from auth
+      // Create shop directly with user_id from auth context
+      // Since we're using custom auth, the user.id should already exist in our users table
       const { data, error } = await supabase.from("shops").insert([
         {
           name: shopData.name,
@@ -117,7 +87,7 @@ const AddShop = () => {
           maps_link: shopData.maps_link,
           latitude: shopData.latitude,
           longitude: shopData.longitude,
-          user_id: user.id, // This links the shop to the authenticated user
+          user_id: user.id,
         },
       ]).select();
       
