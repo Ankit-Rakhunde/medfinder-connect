@@ -60,6 +60,55 @@ const AddShop = () => {
     }));
   };
 
+  const ensureUserExists = async () => {
+    if (!user) return false;
+
+    try {
+      // Check if user exists in the users table
+      const { data: existingUser, error: checkError } = await supabase
+        .from("users")
+        .select("id")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (checkError) {
+        console.error("Error checking user existence:", checkError);
+        return false;
+      }
+
+      if (!existingUser) {
+        // User doesn't exist, create them
+        console.log("Creating user record in database");
+        const { error: createError } = await supabase
+          .from("users")
+          .insert({
+            id: user.id,
+            email: user.email,
+            first_name: user.first_name || '',
+            last_name: user.last_name || '',
+            role: user.role || 'user',
+            password: 'placeholder' // Required field, but not used for validation in our custom auth
+          });
+
+        if (createError) {
+          console.error("Error creating user record:", createError);
+          toast({
+            title: "Error creating user record",
+            description: createError.message,
+            variant: "destructive",
+          });
+          return false;
+        }
+        console.log("User record created successfully");
+      }
+
+      return true;
+    } catch (error: any) {
+      console.error("Unexpected error ensuring user exists:", error);
+      return false;
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -77,8 +126,13 @@ const AddShop = () => {
       console.log("Creating shop with user ID:", user.id);
       console.log("Shop data:", shopData);
       
-      // Create shop directly with user_id from auth context
-      // Since we're using custom auth, the user.id should already exist in our users table
+      // Ensure user exists in database before creating shop
+      const userExists = await ensureUserExists();
+      if (!userExists) {
+        return;
+      }
+      
+      // Create shop with user_id from auth context
       const { data, error } = await supabase.from("shops").insert([
         {
           name: shopData.name,
