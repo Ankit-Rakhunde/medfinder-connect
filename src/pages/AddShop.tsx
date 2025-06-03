@@ -77,6 +77,37 @@ const AddShop = () => {
       console.log("Creating shop with user ID:", user.id);
       console.log("Shop data:", shopData);
       
+      // First, ensure the user exists in the users table
+      const { data: existingUser, error: userCheckError } = await supabase
+        .from("users")
+        .select("id")
+        .eq("id", user.id)
+        .single();
+
+      if (userCheckError && userCheckError.code === 'PGRST116') {
+        // User doesn't exist in users table, create them
+        console.log("User not found in users table, creating user record");
+        const { error: userCreateError } = await supabase
+          .from("users")
+          .insert([{
+            id: user.id,
+            email: user.email,
+            first_name: user.first_name,
+            last_name: user.last_name,
+            role: user.role || 'user'
+          }]);
+
+        if (userCreateError) {
+          console.error("Error creating user record:", userCreateError);
+          toast({
+            title: "Error creating user record",
+            description: userCreateError.message,
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+      
       // Create shop with proper structure including user_id from auth
       const { data, error } = await supabase.from("shops").insert([
         {

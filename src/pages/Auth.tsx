@@ -8,7 +8,7 @@ import Navigation from "@/components/Navigation";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Shield } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 const Auth = () => {
@@ -93,6 +93,21 @@ const Auth = () => {
       
       <main className="container mx-auto px-4 pt-32 pb-16">
         <div className="max-w-md mx-auto">
+          {/* Admin Quick Access */}
+          <div className="mb-6 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+            <div className="flex items-center gap-2 mb-2">
+              <Shield className="h-5 w-5 text-orange-600" />
+              <span className="font-medium text-orange-900">Admin Access</span>
+            </div>
+            <p className="text-sm text-orange-700 mb-3">
+              For admin login, use your admin credentials in the login form below.
+            </p>
+            <div className="text-xs text-orange-600 bg-orange-100 p-2 rounded">
+              <strong>Demo Admin:</strong><br />
+              You can create an admin user via SQL console or contact support.
+            </div>
+          </div>
+
           <Card>
             <CardHeader className="space-y-1">
               <CardTitle className="text-2xl font-bold text-center">Welcome to MedFinder</CardTitle>
