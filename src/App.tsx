@@ -9,6 +9,7 @@ import AddShop from "./pages/AddShop";
 import AddMedicine from "./pages/AddMedicine";
 import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
+import AdminSetup from "./pages/AdminSetup";
 import NotFound from "./pages/NotFound";
 import ShopInventory from "./pages/ShopInventory";
 import { Toaster } from "./components/ui/toaster";
@@ -29,6 +30,7 @@ function App() {
             <Route path="/doctors" element={<Doctors />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/admin" element={<Admin />} />
+            <Route path="/admin-setup" element={<AdminSetup />} />
             <Route 
               path="/add-shop" 
               element={
