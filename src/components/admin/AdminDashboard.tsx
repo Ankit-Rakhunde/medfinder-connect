@@ -7,12 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, Edit, Plus } from "lucide-react";
+import { Trash2, Edit, Plus, MapPin, AlertTriangle } from "lucide-react";
 
 const AdminDashboard = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
+  const [showOnlyWithoutMaps, setShowOnlyWithoutMaps] = useState(false);
 
   // Fetch all shops
   const { data: shops, isLoading: shopsLoading } = useQuery({
@@ -65,6 +66,32 @@ const AdminDashboard = () => {
     },
   });
 
+  // Bulk delete shops without maps links
+  const bulkDeleteShopsWithoutMapsMutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from("shops")
+        .delete()
+        .or("maps_link.is.null,maps_link.eq.''");
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["allShops"] });
+      queryClient.invalidateQueries({ queryKey: ["allMedicines"] });
+      toast({
+        title: "Shops deleted",
+        description: "All shops without Google Maps links have been removed",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error deleting shops",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   // Delete medicine mutation
   const deleteMedicineMutation = useMutation({
     mutationFn: async (medicineId: string) => {
@@ -93,23 +120,53 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleBulkDeleteShopsWithoutMaps = () => {
+    const shopsWithoutMaps = shops?.filter(shop => !shop.maps_link || shop.maps_link.trim() === '') || [];
+    if (shopsWithoutMaps.length === 0) {
+      toast({
+        title: "No shops to delete",
+        description: "All shops already have Google Maps links",
+      });
+      return;
+    }
+
+    if (confirm(`Are you sure you want to delete ${shopsWithoutMaps.length} shops without Google Maps links? This action cannot be undone.`)) {
+      bulkDeleteShopsWithoutMapsMutation.mutate();
+    }
+  };
+
   const handleDeleteMedicine = (medicineId: string) => {
     if (confirm("Are you sure you want to delete this medicine?")) {
       deleteMedicineMutation.mutate(medicineId);
     }
   };
 
-  const filteredShops = shops?.filter(
-    (shop) =>
-      shop.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      shop.address.toLowerCase().includes(searchTerm.toLowerCase())
-  ) || [];
+  const filteredShops = shops?.filter((shop) => {
+    let matches = true;
+    
+    // Apply search filter
+    if (searchTerm) {
+      matches = matches && (
+        shop.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        shop.address.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    
+    // Apply maps link filter
+    if (showOnlyWithoutMaps) {
+      matches = matches && (!shop.maps_link || shop.maps_link.trim() === '');
+    }
+    
+    return matches;
+  }) || [];
 
   const filteredMedicines = medicines?.filter(
     (medicine) =>
       medicine.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (medicine.shops && medicine.shops.name.toLowerCase().includes(searchTerm.toLowerCase()))
   ) || [];
+
+  const shopsWithoutMapsCount = shops?.filter(shop => !shop.maps_link || shop.maps_link.trim() === '').length || 0;
 
   return (
     <div className="container mx-auto py-8 px-6">
@@ -134,19 +191,74 @@ const AdminDashboard = () => {
         </TabsList>
 
         <TabsContent value="shops" className="space-y-4">
+          {/* Shops without maps warning and bulk actions */}
+          {shopsWithoutMapsCount > 0 && (
+            <Card className="border-orange-200 bg-orange-50">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-orange-800">
+                  <AlertTriangle className="h-5 w-5" />
+                  Shops without Google Maps links
+                </CardTitle>
+                <CardDescription className="text-orange-700">
+                  {shopsWithoutMapsCount} shops don't have Google Maps links. You can filter to view them or remove them all.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowOnlyWithoutMaps(!showOnlyWithoutMaps)}
+                  className="border-orange-300"
+                >
+                  <MapPin className="h-4 w-4 mr-2" />
+                  {showOnlyWithoutMaps ? 'Show All Shops' : 'Show Only Without Maps'}
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleBulkDeleteShopsWithoutMaps}
+                  disabled={bulkDeleteShopsWithoutMapsMutation.isPending}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete All Without Maps ({shopsWithoutMapsCount})
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
           {shopsLoading ? (
             <div>Loading shops...</div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredShops.map((shop) => (
-                <Card key={shop.id}>
+                <Card key={shop.id} className={!shop.maps_link || shop.maps_link.trim() === '' ? 'border-red-200 bg-red-50' : ''}>
                   <CardHeader>
-                    <CardTitle className="text-lg">{shop.name}</CardTitle>
+                    <CardTitle className="text-lg flex items-start justify-between">
+                      <span>{shop.name}</span>
+                      {(!shop.maps_link || shop.maps_link.trim() === '') && (
+                        <AlertTriangle className="h-4 w-4 text-red-500 shrink-0" />
+                      )}
+                    </CardTitle>
                     <CardDescription>{shop.address}</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-2">
                       {shop.phone && <p className="text-sm text-gray-600">Phone: {shop.phone}</p>}
+                      <div className="flex items-center gap-2">
+                        <MapPin className="h-4 w-4 text-gray-500" />
+                        <span className="text-sm">
+                          {shop.maps_link && shop.maps_link.trim() !== '' ? (
+                            <a 
+                              href={shop.maps_link} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:underline"
+                            >
+                              Maps Link
+                            </a>
+                          ) : (
+                            <span className="text-red-500">No maps link</span>
+                          )}
+                        </span>
+                      </div>
                       <div className="flex gap-2 pt-2">
                         <Button
                           variant="destructive"
